@@ -19,13 +19,13 @@ class Settings(BaseSettings):
 
     # Ollama Configuration
     ollama_url: str = Field(default="http://localhost:11434", alias="OLLAMA_URL")
-    ollama_model: str = Field(default="qwen2:7b", alias="OLLAMA_MODEL")
+    ollama_model: str = Field(default="qwen3:8b", alias="OLLAMA_MODEL")
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
     # LiteLLM
-    litellm_log: str = Field(default="INFO", alias="LITELLM_LOG")
+#     litellm_log: str = Field(default="INFO", alias="LITELLM_LOG")
 
     class Config:
         env_file = ".env"
