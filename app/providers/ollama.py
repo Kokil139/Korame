@@ -5,7 +5,6 @@ This provider handles communication with Ollama.
 """
 
 from typing import Any, Optional
-import litellm
 from app.kernel.provider import Provider
 
 

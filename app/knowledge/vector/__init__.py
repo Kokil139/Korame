@@ -1,4 +1,4 @@
-``"""Vector storage for embeddings and similarity search."""
+"""Vector storage for embeddings and similarity search."""
 
 from app.knowledge.vector.vector_store import InMemoryVectorStore, VectorEntry
 

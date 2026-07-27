@@ -14,7 +14,7 @@ from app.providers import OllamaProvider
 from app.router import ModelRouter
 from app.agents import RTEAgent
 from app.workflow import WorkflowEngine
-from app.memory import ConversationMemory
+from app.knowledge.memory import ConversationMemory
 from app.knowledge import KnowledgeFabric
 from app.api import router, set_engine, set_memory
 
