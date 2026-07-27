@@ -1,0 +1,658 @@
+Metadata-Version: 2.4
+Name: korame
+Version: 0.1.0
+Summary: Korame: AI-Native Software Factory
+Author: Korame Team
+License: MIT
+Keywords: ai,agents,orchestration,llm,multi-agent
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn[standard]>=0.24.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: litellm>=1.30.0
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: rich>=13.7.0
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.11.0; extra == "dev"
+Requires-Dist: ruff>=0.1.8; extra == "dev"
+Requires-Dist: mypy>=1.7.0; extra == "dev"
+Requires-Dist: isort>=5.13.0; extra == "dev"
+
+# KORAME - AI-Native Software Delivery Organization
+
+**Version:** 1.0 (Foundation Phase)  
+**Status:** Foundation - Ready for Implementation  
+**Last Updated:** July 25, 2026
+
+---
+
+## What is Korame?
+
+Korame is an **AI-native Software Delivery Organization** that transforms business requirements into production-ready software through a coordinated system of specialized AI agents, unified by a Workflow Orchestrator and supported by a shared Knowledge Fabric.
+
+### In One Sentence
+Korame is an autonomous software factory where AI agents (RTE, Architect, Developer, Reviewer, Security, Testing, UAT, DevOps) collaborate through events to deliver software with guaranteed quality gates.
+
+### In Three Sentences
+Korame uses specialized AI agents that each own a phase of software delivery. Rather than calling each other directly, agents communicate asynchronously through an event bus, enabling true independence and scalability. A Workflow Orchestrator coordinates the flow, enforcing quality gates that cannot be skipped—if any gate fails, the work loops back to the Developer Agent for fixes.
+
+---
+
+## The Problem We Solve
+
+Traditional software delivery has handoff issues:
+
+- **Communication Losses:** Requirements get lost in translation
+- **Inconsistent Quality:** Code quality depends on which developer reviews it
+- **Slow Feedback:** Security/testing feedback comes days later, not immediately
+- **Context Switching:** Teams context-switch between requirements, design, code, tests
+- **Bottlenecks:** One person can't review all code; security team overwhelmed
+
+**Korame solves this** by:
+- ✓ Making quality gates non-negotiable (always pass or loop back to developer)
+- ✓ Providing instant feedback through automated agents
+- ✓ Maintaining complete context through Knowledge Fabric
+- ✓ Scaling horizontally (add agents without rewriting core)
+- ✓ Ensuring full audit trail (compliance & debugging)
+
+---
+
+## Core Architecture
+
+```
+Business Requirements
+        │
+        ▼
+┌─────────────────────────────────────┐
+│   Release Train Engineer (RTE)      │
+│   - Creates stories & epics         │
+│   - Approves releases               │
+│   - Monitors metrics                │
+└────────────┬────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│            WORKFLOW ORCHESTRATOR                            │
+│                                                              │
+│   - Task scheduling & dependency resolution                │
+│   - State machine enforcement                               │
+│   - Quality gate management                                 │
+│   - Event routing                                           │
+│   - Context assembly                                        │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+        ┌────────────┼────────────┬──────────────┐
+        │            │            │              │
+    ┌───▼──┐   ┌────▼───┐  ┌────▼────┐  ┌─────▼────┐
+    │Agents│   │ Events │  │Knowledge│  │  Model   │
+    │      │   │  Bus   │  │ Fabric  │  │ Router   │
+    │      │   │(Redis) │  │(Multi-  │  │          │
+    │      │   │        │  │Store)   │  │(Ollama/  │
+    │      │   │        │  │         │  │Azure GPU)│
+    └──────┘   └────────┘  └─────────┘  └──────────┘
+```
+
+### Key Components
+
+**Orchestrator:** Central nervous system; schedules tasks, enforces quality gates, coordinates agents
+
+**Event Bus:** Communication backbone; agents publish events, never call each other
+
+**Knowledge Fabric:** Project memory; stores requirements, code, decisions, relationships
+
+**Model Router:** Intelligent LLM selection; chooses appropriate model based on task complexity
+
+**Agents:** Specialized workers; each owns one phase of delivery (Architect, Developer, etc.)
+
+---
+
+## The 7 Core Principles
+
+1. **Workflow Orchestrator is the Execution Engine**
+   - Single source of truth for task scheduling and state management
+   - All agents communicate through events, never directly
+
+2. **RTE is the Business Owner**
+   - Maintains final approval authority
+   - Delegates execution to orchestrator but never surrenders decision control
+
+3. **Agents Communicate Through Events, Never Direct Calls**
+   - Asynchronous execution
+   - Complete audit trail
+   - True service independence
+   - Failure isolation
+
+4. **Artifacts Move Through Defined Lifecycle States**
+   - NEW → PLANNED → ARCHITECTED → IN_DEVELOPMENT → CODE_REVIEW → SECURITY_SCAN → AUTOMATED_TESTING → READY_FOR_UAT → UAT → READY_FOR_DEPLOYMENT → DEPLOYED → COMPLETED
+   - State transitions immutable and auditable
+   - No skipping backward movement only when quality gates fail
+
+5. **Failed Quality Gates Always Loop Back to Developer**
+   - Code Review fails → Developer fixes → Resubmits through all gates
+   - Security fails → Developer remediates → Resubmits
+   - Testing fails → Developer improves coverage → Resubmits
+   - No exceptions; gates cannot be bypassed
+
+6. **Only Fully Validated Artifacts Reach UAT**
+   - UAT occurs only after all engineering gates pass
+   - Protects UAT team from incomplete work
+   - Ensures UAT failure is a business decision, not an engineering issue
+
+7. **Only UAT-Approved Artifacts Reach DevOps**
+   - No untested code reaches production infrastructure
+   - Fast CI/CD (DevOps assumes validity)
+   - Complete audit trail (every deployed artifact has business sign-off)
+
+---
+
+## Agents & Their Responsibilities
+
+| Agent | Primary Task | Gate Enforcement | Can Skip? |
+|-------|-------------|-----------------|-----------|
+| **RTE** | Requirements → Stories | Business approval | No |
+| **Architect** | Design solution | Design review | No |
+| **Developer** | Implement code | Self-check | No |
+| **Code Reviewer** | Quality review | Approve/Block | No ✗ Cannot skip |
+| **Security** | Vulnerability scan | Approve/Block | No ✗ Cannot skip |
+| **Testing** | Test coverage | Approve/Block | No ✗ Cannot skip |
+| **UAT** | Business acceptance | Approve/Block | No ✗ Cannot skip |
+| **DevOps** | Deploy to production | Deploy | - |
+
+---
+
+## Documentation Roadmap
+
+### Start Here
+
+1. **This README** ← You are here
+2. **QUICK-REFERENCE.md** - 2-minute lookup for key concepts
+
+### For Understanding Design
+
+3. **KORAME-SAS.md** - The official specification
+   - All 20 chapters
+   - Everything is here; this is the source of truth
+   - Read Sections 1-5 first (Vision, Requirements, Architecture)
+
+4. **docs-ADRs.md** - Architecture Decision Records
+   - Why we made key decisions
+   - Trade-offs considered
+   - Future extensibility points
+
+### For Implementation
+
+5. **IMPLEMENTATION-GUIDE.md** - Developer onboarding
+   - Step-by-step setup instructions
+   - How to implement your first agent
+   - Debugging guide
+   - Code standards
+
+### For Deep Dives
+
+- KORAME-SAS.md Section 6: Workflow Orchestrator (how task scheduling works)
+- KORAME-SAS.md Section 7: Knowledge Fabric (context retrieval)
+- KORAME-SAS.md Section 11: Event Bus (inter-agent communication)
+- KORAME-SAS.md Section 12: Model Router (LLM selection strategy)
+
+---
+
+## Quick Start (5 Minutes)
+
+### Run Korame Locally
+
+```bash
+# 1. Clone repository
+git clone <korame-repo>
+cd korame
+
+# 2. Start Docker services
+docker-compose up -d
+
+# 3. Verify it's running
+curl http://localhost:8000/health
+
+# 4. Create a test story
+curl -X POST http://localhost:8000/api/v1/artifacts \
+  -H "Authorization: Bearer test-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "UserStory",
+    "title": "Implement JWT validation",
+    "description": "As a developer, I want JWT tokens validated...",
+    "acceptance_criteria": ["Validates signature", "Checks expiration"]
+  }'
+
+# 5. Watch the state transitions
+curl http://localhost:8000/api/v1/artifacts/story-123/state \
+  -H "Authorization: Bearer test-token"
+```
+
+### Architecture in 30 Seconds
+
+```
+User creates requirement
+         ↓ (RTE Agent)
+Design created
+         ↓ (Architect Agent)
+Code generated
+         ↓ (Developer Agent)
+Code reviewed ← GATE: If fails, loops back to Developer
+         ↓
+Security scanned ← GATE: If fails, loops back to Developer
+         ↓
+Tests generated & run ← GATE: If coverage < 80%, loops back
+         ↓
+Business accepts ← GATE: If fails, full loop back to Developer
+         ↓
+Deployed to production
+         ↓
+Complete ✓
+```
+
+**Key:** No gate can be skipped. All gates must pass before moving forward.
+
+---
+
+## Implementation Phases
+
+### Phase 1: Korame Kernel (3 months)
+- Workflow Orchestrator
+- Event Bus (Redis)
+- Agent SDK
+- Knowledge Fabric interface
+- Local model support (Ollama)
+- ✓ This is happening now
+
+### Phase 2: First Working Agents (3 months)
+- RTE, Architect, Developer agents
+- Reviewer, Security, Testing agents
+- Complete story-to-code flow
+- All quality gates working
+
+### Phase 3: UAT & Dashboarding (3 months)
+- UAT Agent
+- RTE Dashboard (real-time visibility)
+- Metrics & reporting
+- Audit logging
+
+### Phase 4: DevOps & Deployment (3 months)
+- DevOps Agent
+- CI/CD integration
+- Blue-green deployments
+- Automatic rollback
+
+### Phase 5: Azure & Enterprise Scale (6 months)
+- Azure AKS deployment
+- GPU worker pool (H100, A100)
+- Multi-tenant support
+- Enterprise SLAs
+
+---
+
+## The Model Router: Future-Proof LLM Strategy
+
+Korame doesn't lock into any single LLM. Instead:
+
+1. **Today (Local):** Use free Ollama models (Qwen 8B, Llama2, Code Llama)
+2. **Tomorrow (Azure):** Scale to Azure GPU models (GPT-4, Claude, Grok) transparently
+3. **Always:** Choose the right model for each task (cheap for simple, premium for complex)
+
+```
+Simple task (< 500 tokens)     → Free local Ollama
+Medium task (500-2K tokens)    → Local if available, else Azure  
+Complex task (> 2K tokens)     → Azure premium models
+Code generation                → Azure high-quality model
+Security review                → Azure reasoning model
+Emergency (model down)         → Automatic fallback chain
+```
+
+---
+
+## Quality Gates: The Non-Negotiable Rules
+
+Every artifact must pass these gates in this order:
+
+1. **Code Review Gate** - Style, patterns, documentation
+   - Run by: Code Reviewer Agent
+   - Can: PASS, REQUEST_CHANGES, BLOCK
+   - Failure action: Loop back to Developer
+
+2. **Security Gate** - Vulnerabilities, secrets, compliance
+   - Run by: Security Agent
+   - Can: PASS, REQUEST_CHANGES, BLOCK
+   - Failure action: Loop back to Developer
+
+3. **Testing Gate** - Coverage, test quality, integration
+   - Run by: Testing Agent
+   - Can: PASS (if coverage ≥ 80%), BLOCK
+   - Failure action: Loop back to Developer
+
+4. **UAT Gate** - Business acceptance, requirements match
+   - Run by: UAT Agent (human or AI)
+   - Can: PASS, REQUEST_CHANGES, BLOCK
+   - Failure action: Full loop (back through Code Review, Security, Testing)
+
+**Rule:** No exception process. No skipping. All artifacts treated equally.
+
+---
+
+## Knowledge Fabric: Project Memory
+
+Korame remembers everything:
+
+| Data Type | Stored In | Used For |
+|-----------|-----------|----------|
+| Requirements | PostgreSQL | Story context |
+| Source code | Git | Code examples |
+| Architecture | Neo4j | Design patterns |
+| Decisions (ADRs) | Neo4j | Past choices |
+| Embeddings | ChromaDB | Semantic search |
+| Logs | Blob Storage | Debugging |
+
+**Result:** Every agent has context-aware access to the entire project history.
+
+---
+
+## Event-Driven Communication
+
+Agents communicate through events, not function calls:
+
+```
+Developer Agent publishes:
+  Event(type="task.code_generation.completed", 
+        artifact_id="story-123",
+        payload={"code": "...", "tests": "..."})
+
+Code Reviewer Agent listens for:
+  Event(type="task.code_generation.completed")
+  And automatically begins review
+
+Code Reviewer publishes:
+  Event(type="gate.code_review.passed", artifact_id="story-123")
+
+Orchestrator listens and routes to:
+  Event(type="task.security_scan.ready")
+
+Security Agent receives and scans...
+```
+
+**Benefits:**
+- ✓ Agents don't need to know about each other
+- ✓ Easy to add new agents
+- ✓ Failure isolation (one agent down doesn't block others)
+- ✓ Complete audit trail
+- ✓ Easy to retry on failure
+
+---
+
+## Technology Stack
+
+### Core
+- **Python 3.11+** - Language
+- **FastAPI** - Web framework
+- **LangGraph** - Agent orchestration (future)
+
+### Infrastructure
+- **Redis** - Event bus
+- **PostgreSQL** - Project state
+- **Neo4j** - Relationships & decisions
+- **ChromaDB** - Vector embeddings
+- **Git** - Source code
+
+### Models
+- **Ollama** - Local inference (development)
+- **Azure GPU** - Cloud inference (production)
+
+### DevOps
+- **Docker** - Containerization
+- **Kubernetes (AKS)** - Orchestration
+- **GitHub Actions** - CI/CD
+- **Terraform** - Infrastructure as code
+
+---
+
+## Success Metrics
+
+### System Health
+- **Uptime:** 99.5%+ (Phase 1-4), 99.95%+ (Phase 5)
+- **Latency:** Story → Code < 15 minutes
+- **Throughput:** 100+ artifacts/month
+
+### Quality
+- **Code Review Pass:** > 95%
+- **Security Pass:** > 98%
+- **Testing Pass:** > 92% (coverage ≥ 80%)
+- **UAT Pass:** > 88%
+
+### Business Impact
+- **Developer Productivity:** 2x improvement
+- **Defect Rate:** 50% reduction
+- **Time to Market:** Weeks → Days
+
+---
+
+## Deployment Architectures
+
+### Phase 1-2: Local Development
+```
+Laptop
+├── Korame (Docker)
+├── Redis, PostgreSQL, Neo4j (Docker)
+└── Ollama (local models)
+```
+
+### Phase 3-4: Staging/Production
+```
+On-Premises or Cloud
+├── Kubernetes cluster (3+ nodes)
+├── Korame Orchestrator (3 replicas)
+├── Agent pool (auto-scales 1-10)
+├── Managed databases (PostgreSQL, etc.)
+└── Ollama or Azure GPU for inference
+```
+
+### Phase 5: Enterprise Cloud
+```
+Azure
+├── AKS cluster (enterprise-grade)
+├── GPU worker pool (H100/A100)
+├── Azure Database PostgreSQL
+├── Azure Cosmos DB (Neo4j)
+├── Azure Blob Storage
+├── Application Insights
+└── Azure Key Vault (secrets)
+```
+
+---
+
+## Contributing to Korame
+
+### New Developers: Start Here
+
+1. Read this README
+2. Read QUICK-REFERENCE.md
+3. Read IMPLEMENTATION-GUIDE.md (Part 1-3)
+4. Clone repository and run local setup
+5. Study KORAME-SAS.md Sections 1-5
+6. Implement your first agent
+
+### The Development Process
+
+```
+1. Pick task (GitHub issues or roadmap)
+2. Create feature branch
+3. Implement in small commits
+4. Write tests (80%+ coverage)
+5. Submit PR
+6. Code review
+7. Merge to main
+8. Auto-deploy via CI/CD
+```
+
+### Code Standards
+
+- Python 3.11+ with type hints
+- PEP 8 style guide
+- 80%+ test coverage
+- Comprehensive docstrings
+- Architecture Decision Records for major changes
+
+---
+
+## Architecture Decisions (Why We Design It This Way)
+
+The "why" behind Korame's design:
+
+1. **ADR-001: Event-Driven Architecture** - Why events instead of direct calls
+2. **ADR-002: Model-Agnostic Design** - Why we're not locked into one LLM
+3. **ADR-003: Immutable Versioning** - Why we never overwrite history
+4. **ADR-004: Hybrid Local/Azure** - Why we support both local and cloud
+5. **ADR-005: Quality Gates Cannot Be Skipped** - Why no exceptions
+
+See **docs-ADRs.md** for full details.
+
+---
+
+## Common Questions
+
+### Q: Why event-driven instead of direct function calls?
+A: Events enable true independence. Agents can restart, scale, or fail without affecting others. Complete audit trail. Easy to debug and replay.
+
+### Q: Why can't we skip quality gates?
+A: Consistency. Special cases erode standards. Defects caught early are cheaper than production issues. Compliance requires full audit trail.
+
+### Q: What if a developer disagrees with code review feedback?
+A: Developer must either fix the issue or escalate to team lead. Code Review Agent can BLOCK if critical.
+
+### Q: Can we deploy without UAT?
+A: No. Only UAT-approved artifacts reach production. This protects production and maintains business confidence.
+
+### Q: What if I need to patch a security vulnerability urgently?
+A: Same process, fast-tracked:
+1. Fix implemented (minimal code)
+2. Fast-tracked gates (1 hour, not 24 hours)
+3. All gates still run; just faster
+4. Executive approval required
+
+### Q: Why local models in development?
+A: Cost, privacy, offline capability. Developers can work anywhere, anytime. No Azure subscription needed for learning.
+
+### Q: How does Model Router pick which model?
+A: By task complexity, context size, latency requirements, and cost. Simple tasks use free local models. Complex tasks use expensive Azure models. All transparent to agents.
+
+---
+
+## Roadmap Summary
+
+| Phase | Timeline | Focus | Outcome |
+|-------|----------|-------|---------|
+| **1: Kernel** | Months 1-3 | Orchestrator, events, SDK | Foundations working |
+| **2: Agents** | Months 4-6 | All agents implemented | Story-to-code flow |
+| **3: UAT & Dashboard** | Months 7-9 | Business layer | Complete pipeline |
+| **4: DevOps** | Months 10-12 | Deployment automation | Production ready |
+| **5: Enterprise** | Months 13-18 | Azure scale, multi-tenant | Commercial product |
+
+---
+
+## Getting Started
+
+### Step 1: Understand the Vision
+- Read this README (5 min)
+- Watch introduction video (10 min)
+- Skim QUICK-REFERENCE.md (5 min)
+
+### Step 2: Set Up Locally
+- Follow IMPLEMENTATION-GUIDE.md Part 2
+- Get Docker services running
+- Run first test
+
+### Step 3: Implement First Agent
+- Pick simplest agent (RTE Agent)
+- Follow IMPLEMENTATION-GUIDE.md Part 5
+- Submit your first PR
+
+### Step 4: Learn from Others
+- Code review process
+- Learn from senior engineers
+- Contribute improvements
+
+---
+
+## Support & Communication
+
+### Documentation
+- **Full Specification:** KORAME-SAS.md (20 chapters)
+- **Quick Reference:** QUICK-REFERENCE.md
+- **Implementation:** IMPLEMENTATION-GUIDE.md
+- **Decisions:** docs-ADRs.md
+
+### Help Resources
+- GitHub Issues (questions, bugs, features)
+- Architecture Review meetings (Thursdays 2pm)
+- Slack: #korame-dev, #korame-architecture
+- Code Reviews: PR process
+
+### Key Contacts
+- **Architecture Lead:** [Name]
+- **DevOps Lead:** [Name]
+- **Product Owner:** [Name]
+
+---
+
+## Key Files to Read
+
+| File | What | When |
+|------|------|------|
+| This README | Overview | First (now) |
+| QUICK-REFERENCE.md | Quick lookup | Before coding |
+| KORAME-SAS.md | Full specification | Deep understanding |
+| docs-ADRs.md | Design decisions | Design reviews |
+| IMPLEMENTATION-GUIDE.md | How to build | When developing |
+
+---
+
+## License
+
+[Your License Here]
+
+---
+
+## Status
+
+**Foundation Phase:** Complete ✓  
+**Specification:** APPROVED ✓  
+**Ready for Phase 1 Implementation:** YES ✓
+
+Next step: Implement Phase 1 (Korame Kernel)
+
+---
+
+**Last Updated:** July 25, 2026  
+**Document Version:** 1.0 (Foundation)  
+**Status:** Ready for Implementation
+
+**Welcome to Korame. Let's build the AI-native software factory. 🚀**
+
+---
+
+## Quick Links
+
+- [📖 Full Specification (KORAME-SAS.md)](./KORAME-SAS.md)
+- [⚡ Quick Reference](./QUICK-REFERENCE.md)
+- [🏗️ Implementation Guide](./IMPLEMENTATION-GUIDE.md)
+- [📋 Architecture Decisions](./docs-ADRs.md)
+- [🔗 GitHub Repository](https://github.com/korame/korame)
+- [💬 GitHub Discussions](https://github.com/korame/korame/discussions)
+- [🐛 Report Issues](https://github.com/korame/korame/issues)
+
