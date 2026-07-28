@@ -6,9 +6,9 @@ interface LogoProps {
 }
 
 /**
- * Korame mark: three nodes connected by a flowing line - a business
- * requirement moving through the multi-agent pipeline into a finished user
- * story. Optionally animates the connecting flow and the endpoint pulse.
+ * Korame mark: a "K" built from five connected nodes - each node is an agent,
+ * each line is agents talking to one another, converging on the central hub
+ * (which pulses) the way requirements flow through the multi-agent pipeline.
  */
 const Logo: FC<LogoProps> = ({ size = 32, animated = true }) => (
   <svg
@@ -22,7 +22,7 @@ const Logo: FC<LogoProps> = ({ size = 32, animated = true }) => (
   >
     <rect width="40" height="40" rx="11" fill="url(#korame-logo-gradient)" />
     <path
-      d="M11 28 L20 17 L30 10"
+      d="M13 9 L13 31 M13 20 L29 9 M13 20 L29 31"
       stroke="#ffffff"
       strokeWidth="1.75"
       strokeLinecap="round"
@@ -30,9 +30,11 @@ const Logo: FC<LogoProps> = ({ size = 32, animated = true }) => (
       opacity="0.85"
       className={animated ? "korame-logo-flow" : undefined}
     />
-    <circle cx="11" cy="28" r="2.75" fill="#ffffff" />
-    <circle cx="20" cy="17" r="2.75" fill="#ffffff" />
-    <circle cx="30" cy="10" r="3.25" fill="#ffffff" className={animated ? "korame-logo-pulse" : undefined} />
+    <circle cx="13" cy="9" r="2.75" fill="#ffffff" />
+    <circle cx="13" cy="31" r="2.75" fill="#ffffff" />
+    <circle cx="29" cy="9" r="2.75" fill="#ffffff" />
+    <circle cx="29" cy="31" r="2.75" fill="#ffffff" />
+    <circle cx="13" cy="20" r="3.25" fill="#ffffff" className={animated ? "korame-logo-pulse" : undefined} />
     <defs>
       <linearGradient id="korame-logo-gradient" x1="0" y1="0" x2="40" y2="40">
         <stop offset="0%" stopColor="#4d7bff" />
