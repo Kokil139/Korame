@@ -1,21 +1,26 @@
 # Korame V1 - Complete Build Summary
 
-**Date**: July 27, 2026  
-**Status**: ✅ **COMPLETE & READY TO RUN**
+**Date**: July 28, 2026  
+**Status**: ✅ **BACKEND COMPLETE** · ✅ **FRONTEND CODE COMPLETE** (dependency install pending on this machine — see Quick Start)
 
 ---
 
 ## 🎯 What Was Built
 
-Korame V1 is a **kernel-first**, **multi-agent AI software factory** built in Python with:
+Korame V1 is a **kernel-first**, **multi-agent AI software factory** built in Python, with a React/TypeScript frontend for business users:
 
 - ✅ Core kernel architecture (Agent, Provider, Task, Response, Registry)
-- ✅ RTE Agent (Requirements & Test Engineer) 
+- ✅ RTE Agent (Requirements & Test Engineer) with **multi-turn clarification** —
+  asks follow-up questions when a requirement is ambiguous instead of guessing
+- ✅ Knowledge Fabric (conversation/agent/session/working memory, embeddings,
+  vector store, graph store, search, artifacts) under `app/knowledge/`
 - ✅ Model Router (supports any LiteLLM provider)
 - ✅ Ollama/LiteLLM providers
-- ✅ FastAPI REST API
-- ✅ In-memory conversation storage
-- ✅ Complete test suite
+- ✅ FastAPI REST API (`/chat`, `/health`, `/conversations/{id}`)
+- ✅ In-memory conversation storage with history-aware prompting
+- ✅ **React + TypeScript frontend** (Vite) — business requirement chat UI with
+  clarifying-question support, under `frontend/`
+- ✅ Complete test suite (backend)
 - ✅ Comprehensive documentation
 
 ---
@@ -24,7 +29,7 @@ Korame V1 is a **kernel-first**, **multi-agent AI software factory** built in Py
 
 ```
 korame/
-├── app/                              # Main application
+├── app/                              # Main application (backend)
 │   ├── __init__.py
 │   ├── main.py                       # FastAPI entry point
 │   │
@@ -42,7 +47,7 @@ korame/
 │   │   │   └── agent.py              # BaseAgent class
 │   │   └── rte/                      # Requirements & Test Engineer
 │   │       ├── __init__.py
-│   │       └── agent.py              # RTEAgent implementation
+│   │       └── agent.py              # RTEAgent (clarification-aware)
 │   │
 │   ├── providers/                    # Model providers
 │   │   ├── __init__.py
@@ -57,9 +62,33 @@ korame/
 │   │   ├── __init__.py
 │   │   └── engine.py                 # WorkflowEngine (executes tasks)
 │   │
-│   ├── memory/                       # Conversation storage
+│   ├── knowledge/                    # KNOWLEDGE FABRIC
 │   │   ├── __init__.py
-│   │   └── conversation.py           # In-memory storage (fast)
+│   │   ├── knowledge_service.py      # Unified knowledge interface
+│   │   ├── memory/                   # Conversation/agent/session/working memory
+│   │   │   ├── __init__.py
+│   │   │   ├── conversation.py       # ConversationMemory (history-aware)
+│   │   │   ├── agent_memory.py
+│   │   │   ├── session.py
+│   │   │   └── working.py
+│   │   ├── artifacts/
+│   │   │   ├── __init__.py
+│   │   │   └── artifacts.py
+│   │   ├── embeddings/
+│   │   │   ├── __init__.py
+│   │   │   └── embeddings.py
+│   │   ├── vector/
+│   │   │   ├── __init__.py
+│   │   │   └── vector_store.py
+│   │   ├── search/
+│   │   │   ├── __init__.py
+│   │   │   └── search.py
+│   │   ├── graph/
+│   │   │   ├── __init__.py
+│   │   │   ├── neo4j_graph.py
+│   │   │   └── networkx_graph.py
+│   │   └── models/
+│   │       └── __init__.py
 │   │
 │   ├── api/                          # REST endpoints
 │   │   ├── __init__.py
@@ -71,7 +100,7 @@ korame/
 │   │
 │   ├── prompts/                      # Agent prompts
 │   │   ├── __init__.py
-│   │   └── rte.md                    # RTE system prompt
+│   │   └── rte.md                    # RTE prompt (STATUS: CLARIFICATION_NEEDED/READY)
 │   │
 │   ├── models/                       # Reserved for data models
 │   │   └── __init__.py
@@ -80,7 +109,36 @@ korame/
 │       ├── __init__.py
 │       └── logging.py                # Rich logging setup
 │
-├── tests/                            # Test suite (pytest)
+├── frontend/                         # React + TypeScript SPA (Vite)
+│   ├── index.html
+│   ├── package.json                  # react, react-router-dom, axios, zustand, react-markdown
+│   ├── vite.config.ts / tsconfig*.json
+│   ├── eslint.config.js
+│   ├── .env / .env.example           # VITE_API_BASE_URL
+│   │
+│   └── src/
+│       ├── main.tsx                  # Entry point
+│       ├── App.tsx                   # Renders <AppRoutes />
+│       ├── index.css                 # Global styles & animations
+│       ├── vite-env.d.ts
+│       ├── routes/AppRoutes.tsx      # "/" welcome + "/rte" chat page
+│       ├── pages/RTEPage.tsx         # Business requirement chat page (built)
+│       ├── pages/{Dashboard,Project,Settings}Page.tsx   # placeholders (V2)
+│       ├── hooks/useChat.ts          # Hook wrapping chatStore
+│       ├── store/chatStore.ts        # Zustand: messages, conversationId, API calls
+│       ├── store/projectStore.ts     # placeholder (V2)
+│       ├── api/client.ts             # Axios instance (baseURL, timeout)
+│       ├── api/chatApi.ts            # submitBusinessRequirement(), fetchConversationHistory()
+│       ├── types/chat.ts             # ChatMessage, ChatApiResponse, ConversationHistory*
+│       ├── theme/theme.ts            # Shared design tokens
+│       ├── utils/constants.ts        # Agent name, API routes, storage keys
+│       └── components/
+│           ├── chat/                 # ChatWindow, ChatMessage, ChatInput, TypingIndicator
+│           ├── common/               # EmptyState, ErrorAlert, LoadingSpinner
+│           ├── layout/                # placeholders (V2)
+│           └── project/               # placeholders (V2)
+│
+├── tests/                            # Test suite (pytest, backend only)
 │   ├── __init__.py
 │   ├── conftest.py                   # Pytest fixtures & config
 │   ├── test_kernel.py                # Kernel tests
@@ -90,6 +148,7 @@ korame/
 ├── docs/                             # Documentation
 │   ├── ARCHITECTURE.md               # Deep architectural guide
 │   ├── CONTRIBUTING.md               # Contribution guidelines
+│   ├── KNOWLEDGE-FABRIC.md           # Knowledge Fabric deep dive
 │   └── QUICKSTART.md                 # 5-minute quickstart
 │
 ├── scripts/                          # Helper scripts
@@ -97,8 +156,8 @@ korame/
 │   ├── quality-check.sh              # Code quality (Mac/Linux)
 │   └── quality-check.bat             # Code quality (Windows)
 │
-├── pyproject.toml                    # Project config & dependencies
-├── .env                              # Environment variables
+├── pyproject.toml                    # Backend project config & dependencies
+├── .env                              # Backend environment variables
 ├── .gitignore                        # Git ignore rules
 └── README.md                         # Main readme
 ```
@@ -134,8 +193,10 @@ The foundation everything depends on.
 
 **RTEAgent** (rte/agent.py)
 - Requirements & Test Engineer
-- Takes business requirements
-- Generates user stories with acceptance criteria
+- Takes business requirements plus prior conversation turns (if any)
+- Asks clarifying questions when a requirement is ambiguous or incomplete
+  (`STATUS: CLARIFICATION_NEEDED`), otherwise generates the final user story
+  with acceptance criteria (`STATUS: READY`)
 - Uses model router to select provider
 
 **How to add a new agent**:
@@ -197,26 +258,53 @@ responses = await engine.execute_chain(
 )
 ```
 
-### 6. **Memory** (app/memory/)
+### 6. **Knowledge Fabric / Memory** (app/knowledge/memory/)
 
 **ConversationMemory** (conversation.py)
 - In-memory conversation storage (fast for V1)
 - Stores messages with metadata
-- Formats context for models
+- `get_context_for_model()` formats prior turns for the model — the RTE agent
+  uses this so it can ask clarifying questions with full context
 - Future: Redis, PostgreSQL for persistence
 
 ### 7. **API** (app/api/)
 
 **REST Endpoints**:
-- `POST /api/v1/chat` - Execute workflow
+- `POST /api/v1/chat` - Execute workflow. Response now includes
+  `needs_clarification: bool` and `questions: list[str]` alongside `user_story`,
+  so callers can tell a clarifying question apart from a finished story.
 - `GET /api/v1/health` - Health check
 - `GET /api/v1/conversations/{id}` - Get history
+
+### 8. **Frontend** (frontend/)
+
+React + TypeScript SPA built with Vite. Talks to the backend only through the
+REST API above.
+
+- **`store/chatStore.ts`** (Zustand) - owns `messages`, `conversationId`,
+  `isLoading`, `error`; `sendRequirement()` posts to `/api/v1/chat`, reusing
+  `conversationId` (persisted in `sessionStorage`) so the RTE agent sees prior
+  turns and can ask follow-up questions.
+- **`hooks/useChat.ts`** - thin hook wrapping the store for components.
+- **`pages/RTEPage.tsx`** - the business-user page: textarea to submit a
+  requirement, scrollable chat history, "New conversation" reset.
+- **`components/chat/`** - `ChatWindow` (auto-scrolling list), `ChatMessage`
+  (renders markdown, styles clarifying-question replies differently),
+  `ChatInput` (Enter to send, Shift+Enter for newline), `TypingIndicator`.
+- **`components/common/`** - `EmptyState`, `ErrorAlert`, `LoadingSpinner`.
+- **`api/chatApi.ts`** / **`api/client.ts`** - Axios wrapper calling
+  `POST /api/v1/chat` and `GET /api/v1/conversations/{id}`.
+
+`components/layout/`, `components/project/`, `pages/DashboardPage.tsx`,
+`pages/ProjectPage.tsx`, `pages/SettingsPage.tsx`, and `store/projectStore.ts`
+are still empty placeholder files reserved for future project-management
+features — not part of the current RTE chat capability.
 
 ---
 
 ## 📦 Dependencies
 
-**Core**:
+**Backend (Core)**:
 - fastapi >= 0.104.0
 - uvicorn >= 0.24.0
 - pydantic >= 2.5.0
@@ -226,7 +314,7 @@ responses = await engine.execute_chain(
 - python-dotenv >= 1.0.0
 - rich >= 13.7.0
 
-**Dev**:
+**Backend (Dev)**:
 - pytest >= 7.4.0
 - pytest-asyncio >= 0.21.0
 - pytest-cov >= 4.1.0
@@ -234,6 +322,12 @@ responses = await engine.execute_chain(
 - ruff >= 0.1.8
 - mypy >= 1.7.0
 - isort >= 5.13.0
+
+**Frontend** (`frontend/package.json`):
+- react ^18.3, react-dom ^18.3, react-router-dom ^6.28
+- axios ^1.7 (HTTP client), zustand ^5.0 (chat state store)
+- react-markdown ^9.0 (renders RTE responses)
+- vite ^6.0, typescript ~5.6, eslint ^9.17 (dev tooling)
 
 ---
 
@@ -256,10 +350,10 @@ pip install -e ".[dev]"
 ```bash
 ollama serve
 # In another terminal:
-ollama pull qwen2:7b
+ollama pull qwen3:8b
 ```
 
-### 3. Run Korame
+### 3. Run the backend
 
 ```bash
 uvicorn app.main:app --reload
@@ -268,13 +362,13 @@ uvicorn app.main:app --reload
 **Server**: http://localhost:8000  
 **API Docs**: http://localhost:8000/docs
 
-### 4. Test
+### 4. Test the backend
 
 ```bash
 # Health check
 curl http://localhost:8000/api/v1/health
 
-# Generate user story
+# Generate a user story (or get clarifying questions back)
 curl -X POST http://localhost:8000/api/v1/chat \
   -H "Content-Type: application/json" \
   -d '{
@@ -282,6 +376,21 @@ curl -X POST http://localhost:8000/api/v1/chat \
     "requirement": "Users should upload CSV files"
   }'
 ```
+
+### 5. Install & run the frontend
+
+```bash
+cd frontend
+npm install       # requires access to registry.npmjs.org
+npm run dev
+```
+
+**Frontend**: http://localhost:5173/rte (configured via `frontend/.env` to call
+the backend at `http://localhost:8000`)
+
+> If `npm install` hangs with no progress on a corporate machine, check whether
+> a network security proxy (e.g., Zscaler) is blocking `registry.npmjs.org`
+> before assuming it's a code issue.
 
 ---
 
@@ -410,16 +519,21 @@ provider = LiteLLMProvider("gemini-pro")
 ## ✅ What Works Now
 
 - ✅ RTE Agent generates user stories
+- ✅ RTE Agent asks clarifying questions across multiple turns before
+  finalizing a story (uses conversation history; frontend shows questions vs.
+  final story differently)
 - ✅ Model Router selects providers
 - ✅ Ollama integration via LiteLLM
 - ✅ REST API with FastAPI
-- ✅ In-memory conversation storage
+- ✅ In-memory conversation storage, history-aware prompting
 - ✅ Registry for agents/providers
 - ✅ Workflow orchestration
 - ✅ Error handling
 - ✅ Logging with Rich
 - ✅ Type hints (Python 3.12+)
-- ✅ Comprehensive test suite
+- ✅ Comprehensive test suite (backend)
+- ✅ React + TypeScript frontend for submitting requirements and viewing the
+  RTE conversation (`frontend/`)
 
 ---
 
@@ -432,6 +546,8 @@ provider = LiteLLMProvider("gemini-pro")
 - [ ] PostgreSQL persistence
 - [ ] Docker Compose setup
 - [ ] Agent chaining
+- [ ] Frontend: Dashboard/Project/Settings pages (currently empty placeholders)
+- [ ] Frontend: persist conversations server-side and list past conversations
 
 ### V3 (Future)
 - [ ] Code generation
@@ -491,10 +607,14 @@ provider = LiteLLMProvider("gemini-pro")
 | app/providers/litellm.py | Multi-provider | LiteLLMProvider |
 | app/router/model_router.py | Provider selection | ModelRouter |
 | app/workflow/engine.py | Orchestration | WorkflowEngine |
-| app/memory/conversation.py | Storage | ConversationMemory |
-| app/api/chat.py | REST API | chat(), health() |
+| app/knowledge/memory/conversation.py | Conversation storage | ConversationMemory |
+| app/api/chat.py | REST API | chat(), health(), get_conversation() |
 | app/config/settings.py | Configuration | Settings |
 | app/main.py | FastAPI app | create_app() |
+| frontend/src/store/chatStore.ts | Chat state & API calls | useChatStore |
+| frontend/src/hooks/useChat.ts | Chat hook | useChat() |
+| frontend/src/pages/RTEPage.tsx | Business requirement page | RTEPage |
+| frontend/src/api/chatApi.ts | Backend API calls | submitBusinessRequirement() |
 
 ---
 

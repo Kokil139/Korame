@@ -6,12 +6,18 @@ korame/
 ├── 📄 BUILD-SUMMARY.md                    ⭐ START HERE - Complete overview
 ├── 📄 PROJECT-CHECKLIST.md                ✅ Verification checklist  
 ├── 📄 README.md                           📖 Main readme (existing)
-├── 📄 pyproject.toml                      ⚙️  Dependencies & config
-├── 📄 .env                                🔐 Environment variables
+├── 📄 DIRECTORY-GUIDE.md                  🗺️  Directory tree & navigation (this file)
+├── 📄 QUICK-REFERENCE.md                  🔑 Principles, state machine, event flow cheat sheet
+├── 📄 KORAME-SAS.md                       📐 Full Software Architecture Specification
+├── 📄 IMPLEMENTATION-GUIDE.md             🧭 Onboarding guide for new developers
+├── 📄 KNOWLEDGE-FABRIC-BUILD.md           🧠 Knowledge Fabric build notes
+├── 📄 docs-ADRs.md                        📝 Architecture Decision Records
+├── 📄 pyproject.toml                      ⚙️  Backend dependencies & config
+├── 📄 .env                                🔐 Backend environment variables
 ├── 📄 .gitignore                          🚫 Git ignore rules
 │
 │
-├── 📁 app/                                🎯 MAIN APPLICATION
+├── 📁 app/                                🎯 MAIN APPLICATION (backend)
 │   │
 │   ├── __init__.py                        📦 Package init
 │   ├── main.py                            ⭐ ENTRY POINT - FastAPI app
@@ -93,6 +99,56 @@ korame/
 │       └── logging.py                     📊 Rich logging setup
 │
 │
+├── 📁 frontend/                           💻 REACT FRONTEND (Vite + TypeScript)
+│   ├── index.html                         Entry HTML
+│   ├── package.json                       react, react-router-dom, axios, zustand, react-markdown
+│   ├── vite.config.ts / tsconfig*.json    Build & type-check config
+│   ├── eslint.config.js                   Lint config
+│   ├── .env / .env.example                🔐 VITE_API_BASE_URL (points at backend)
+│   │
+│   └── 📁 src/
+│       ├── main.tsx                       ⭐ ENTRY POINT - mounts <App />
+│       ├── App.tsx                        Renders <AppRoutes />
+│       ├── index.css                      Global styles & animations
+│       ├── vite-env.d.ts                  Vite client type reference
+│       │
+│       ├── 📁 routes/
+│       │   └── AppRoutes.tsx              "/" welcome + "/rte" chat page routing
+│       │
+│       ├── 📁 pages/
+│       │   ├── RTEPage.tsx                📝 Business requirement chat page (built)
+│       │   ├── DashboardPage.tsx          (placeholder - reserved for V2)
+│       │   ├── ProjectPage.tsx            (placeholder - reserved for V2)
+│       │   └── SettingsPage.tsx           (placeholder - reserved for V2)
+│       │
+│       ├── 📁 hooks/
+│       │   └── useChat.ts                 Hook wrapping chatStore for components
+│       │
+│       ├── 📁 store/
+│       │   ├── chatStore.ts               🗣️  Zustand store: messages, conversationId, API calls
+│       │   └── projectStore.ts            (placeholder - reserved for V2)
+│       │
+│       ├── 📁 api/
+│       │   ├── client.ts                  Axios instance (baseURL, 120s timeout)
+│       │   └── chatApi.ts                 submitBusinessRequirement(), fetchConversationHistory()
+│       │
+│       ├── 📁 types/
+│       │   ├── chat.ts                    ChatMessage, ChatApiResponse, ConversationHistory*
+│       │   └── project.ts                 (placeholder - reserved for V2)
+│       │
+│       ├── 📁 theme/
+│       │   └── theme.ts                   Shared design tokens (colors, radius, font)
+│       │
+│       ├── 📁 utils/
+│       │   └── constants.ts               Agent name, API routes, storage keys
+│       │
+│       └── 📁 components/
+│           ├── 📁 chat/                   💬 ChatWindow, ChatMessage, ChatInput, TypingIndicator
+│           ├── 📁 common/                 EmptyState, ErrorAlert, LoadingSpinner
+│           ├── 📁 layout/                 (placeholder - AppHeader, AppLayout, Sidebar - V2)
+│           └── 📁 project/                (placeholder - NewProjectDialog, ProjectCard, ProjectList - V2)
+│
+│
 ├── 📁 tests/                              🧪 TEST SUITE
 │   ├── __init__.py
 │   ├── conftest.py                        🔧 Pytest fixtures & config
@@ -123,9 +179,23 @@ korame/
 - Read: `BUILD-SUMMARY.md`
 - Then: `docs/ARCHITECTURE.md`
 
-**Get it running**
+**Get the backend running**
 - Read: `docs/QUICKSTART.md`
 - Run: `uvicorn app.main:app --reload`
+
+**Get the frontend running**
+- `cd frontend && npm install && npm run dev`
+- Visit http://localhost:5173/rte (requires the backend running on port 8000
+  and Ollama serving the configured model)
+- If `npm install` hangs with no progress, check for a corporate network proxy
+  (e.g., Zscaler) blocking `registry.npmjs.org` before assuming it's a code problem
+
+**Understand the RTE chat/clarification flow**
+- Backend: `app/prompts/rte.md` (STATUS markers) → `app/agents/rte/agent.py`
+  (parses status, builds history-aware prompt) → `app/api/chat.py` (passes
+  conversation history, returns `needs_clarification`/`questions`)
+- Frontend: `frontend/src/store/chatStore.ts` (calls the API, keeps
+  `conversationId`) → `frontend/src/pages/RTEPage.tsx` (renders the chat)
 
 **Add a new agent**
 1. Check: `docs/CONTRIBUTING.md`
@@ -177,19 +247,32 @@ bash scripts/quality-check.sh      # Mac/Linux
 | `app/providers/ollama.py` | Working provider | How to implement providers |
 | `tests/test_kernel.py` | Testing kernel | How to test components |
 
+### Frontend Files (Learn From)
+| File | Purpose | Pattern |
+|------|---------|---------|
+| `frontend/src/store/chatStore.ts` | Chat state + API calls | Zustand store pattern used across the app |
+| `frontend/src/hooks/useChat.ts` | Hook over the store | How pages consume state without touching the store directly |
+| `frontend/src/api/chatApi.ts` | Backend API calls | How to call a new backend endpoint from the frontend |
+| `frontend/src/components/chat/ChatMessage.tsx` | Chat bubble rendering | How to style clarification vs. final-story vs. error messages |
+
 ### Configuration Files
 | File | Purpose | Controls |
 |------|---------|----------|
-| `.env` | Environment variables | API port, Ollama URL, model name, log level |
-| `pyproject.toml` | Project config | Dependencies, versions, tool settings |
+| `.env` | Backend environment variables | API port, Ollama URL, model name, log level |
+| `pyproject.toml` | Backend project config | Dependencies, versions, tool settings |
+| `frontend/.env` | Frontend environment variables | `VITE_API_BASE_URL` (backend URL) |
+| `frontend/package.json` | Frontend project config | Dependencies, scripts (`dev`, `build`, `lint`) |
 
 ### Documentation Files
 | File | Time | Level | Purpose |
 |------|------|-------|---------|
 | `BUILD-SUMMARY.md` | 10 min | Beginner | Overview & statistics |
+| `DIRECTORY-GUIDE.md` | 10 min | Beginner | Directory tree & navigation (this file) |
 | `docs/QUICKSTART.md` | 5 min | Beginner | Get it running |
 | `docs/ARCHITECTURE.md` | 30 min | Intermediate | Deep dive |
+| `docs/KNOWLEDGE-FABRIC.md` | 20 min | Intermediate | Knowledge Fabric deep dive |
 | `docs/CONTRIBUTING.md` | 20 min | Intermediate | Development process |
+| `KORAME-SAS.md` | 45 min | Advanced | Full architecture specification |
 | `PROJECT-CHECKLIST.md` | 5 min | All | Verification checklist |
 
 ---
@@ -256,12 +339,35 @@ Tests:
   ────────────────────────────────────────
   TOTAL:           4 files    ~200 lines  (12 tests)
 
+Frontend (frontend/src/):
+  api/                 2 files    60 lines   (client.ts, chatApi.ts)
+  store/               1 file     95 lines   (chatStore.ts - zustand)
+  hooks/               1 file     20 lines   (useChat.ts)
+  components/chat/     4 files   170 lines   (ChatWindow, ChatMessage, ChatInput, TypingIndicator)
+  components/common/   3 files    60 lines   (EmptyState, ErrorAlert, LoadingSpinner)
+  pages/               1 file     45 lines   (RTEPage.tsx built; Dashboard/Project/Settings empty)
+  routes/              1 file     35 lines   (AppRoutes.tsx)
+  types/               1 file     35 lines   (chat.ts)
+  theme/               1 file     25 lines   (theme.ts)
+  utils/               1 file     10 lines   (constants.ts)
+  App.tsx / main.tsx / index.css              (bootstrap + global styles)
+  ────────────────────────────────────────
+  TOTAL:  ~17 built files (plus reserved empty placeholders for Dashboard/
+          Project/Settings pages, projectStore, layout/project components)
+
 Docs:
   BUILD-SUMMARY.md     (this comprehensive guide)
+  DIRECTORY-GUIDE.md   (directory tree & navigation - this file)
   PROJECT-CHECKLIST.md (verification checklist)
-  QUICKSTART.md        (5-minute quick start)
-  ARCHITECTURE.md      (30-minute deep dive)
-  CONTRIBUTING.md      (development guidelines)
+  QUICK-REFERENCE.md   (principles/state-machine cheat sheet)
+  KORAME-SAS.md            (full architecture specification)
+  IMPLEMENTATION-GUIDE.md  (developer onboarding)
+  KNOWLEDGE-FABRIC-BUILD.md (knowledge fabric build notes)
+  docs-ADRs.md             (architecture decision records)
+  docs/QUICKSTART.md        (5-minute quick start)
+  docs/ARCHITECTURE.md      (30-minute deep dive)
+  docs/CONTRIBUTING.md      (development guidelines)
+  docs/KNOWLEDGE-FABRIC.md  (knowledge fabric deep dive)
 
 Scripts:
   setup.py             (setup & verification)
@@ -279,7 +385,10 @@ Config:
 ## 🎯 Component Relationships
 
 ```
-FastAPI (app/main.py)
+Frontend (frontend/src, Vite dev server :5173)
+    │  HTTP (axios) → VITE_API_BASE_URL
+    ▼
+FastAPI (app/main.py, :8000)
     │
     ├─→ API Routes (app/api/chat.py)
     │   └─→ Workflow Engine (app/workflow/engine.py)
