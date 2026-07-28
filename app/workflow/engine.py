@@ -10,6 +10,7 @@ from typing import Optional, Any
 from app.kernel.models import Task, Response, Context
 from app.kernel.registry import Registry
 from app.router.model_router import ModelRouter
+from app.knowledge.todos import TodoStatus
 
 
 class WorkflowEngine:
@@ -140,4 +141,127 @@ class WorkflowEngine:
             current_input = response.data
 
         return responses
+
+    async def execute_development_cycle(
+        self,
+        story_title: str,
+        story: str,
+        max_attempts_per_item: int = 3,
+        conversation_id: Optional[str] = None,
+        conversation_memory: Optional[Any] = None,
+    ) -> dict[str, Any]:
+        """
+        Run the full Developer <-> Testing loop for a single finalized user story:
+
+        1. Developer Agent breaks the story into an ordered todo list.
+        2. For each todo item (one after another):
+           - Developer Agent implements it.
+           - Testing Agent writes and actually executes real tests against it.
+           - If tests fail, the failure output is fed back to the Developer
+             Agent to fix, up to `max_attempts_per_item` tries; if it still
+             fails, the item is left FAILED and the loop moves on.
+           - If tests pass, the item is marked COMPLETE.
+        3. Once every item is COMPLETE, the Developer Agent opens a pull
+           request with all the generated code (skipped gracefully if GitHub
+           isn't configured).
+        4. The Developer Agent reports the outcome back to the RTE agent by
+           appending a status update - including the pull request link, if
+           any - to the original RTE conversation, so the business user sees
+           it the next time they open that chat.
+
+        Args:
+            story_title: Human-readable title for the story
+            story: The finalized user story text (with acceptance criteria)
+            max_attempts_per_item: Max implement/test retries per todo item
+            conversation_id: The RTE conversation this story came from, so the
+                completion report can be posted back to it (optional)
+            conversation_memory: The shared ConversationMemory to post the
+                report into (optional; required together with conversation_id)
+
+        Returns:
+            Dict with the todo list ID, per-item status, whether every item
+            completed, the pull request result (if attempted), and the
+            human-readable report that was (or would be) posted back to RTE
+        """
+        developer = self.registry.get_agent("developer")
+        tester = self.registry.get_agent("testing")
+        if not developer or not tester:
+            return {"status": "error", "error": "Developer/Testing agents not registered"}
+
+        todo_list = await developer.create_todo_list(story_title, story)
+
+        for item in todo_list.items:
+            item.status = TodoStatus.IN_PROGRESS
+            test_feedback: Optional[str] = None
+
+            for attempt in range(1, max_attempts_per_item + 1):
+                item.attempts = attempt
+                item.code = await developer.implement_item(story, item, test_feedback)
+                item.status = TodoStatus.TESTING
+
+                test_result = await tester.run_tests(
+                    run_id=f"{todo_list.id}-{item.id}",
+                    task_title=item.title,
+                    code=item.code,
+                )
+                item.test_code = test_result["test_code"]
+                item.test_output = test_result["output"]
+
+                if test_result["passed"]:
+                    item.status = TodoStatus.COMPLETE
+                    break
+
+                item.status = TodoStatus.FAILED
+                test_feedback = test_result["output"]
+
+        pull_request = None
+        if todo_list.is_complete():
+            pull_request = await developer.create_pull_request(todo_list)
+
+        report = self._build_development_report(todo_list, pull_request)
+
+        # Report back to RTE: append the outcome to the original conversation
+        # so the business user sees it the next time they open that chat.
+        if conversation_id and conversation_memory:
+            conversation_memory.add_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=report,
+                agent_name="rte",
+            )
+
+        return {
+            "status": "success",
+            "todo_list_id": todo_list.id,
+            "story_title": todo_list.story_title,
+            "items": [
+                {"id": i.id, "title": i.title, "status": i.status.value, "attempts": i.attempts}
+                for i in todo_list.items
+            ],
+            "all_complete": todo_list.is_complete(),
+            "pull_request": pull_request,
+            "report": report,
+        }
+
+    @staticmethod
+    def _build_development_report(todo_list: Any, pull_request: Optional[dict[str, Any]]) -> str:
+        """Build the human-readable status update posted back to the RTE conversation."""
+        lines = [f"**Development update: {todo_list.story_title}**", ""]
+        for item in todo_list.items:
+            icon = "\u2705" if item.status == TodoStatus.COMPLETE else "\u26a0\ufe0f"
+            lines.append(f"{icon} {item.title} — {item.status.value} ({item.attempts} attempt(s))")
+
+        lines.append("")
+        if todo_list.is_complete():
+            if pull_request and pull_request.get("created"):
+                lines.append(f"All tasks passed testing. Pull request opened: {pull_request['pr_url']}")
+            elif pull_request:
+                lines.append(
+                    "All tasks passed testing, but the pull request could not be created: "
+                    f"{pull_request.get('reason', 'unknown reason')}"
+                )
+        else:
+            lines.append("Not all tasks passed testing yet - see the statuses above.")
+
+        return "\n".join(lines)
 

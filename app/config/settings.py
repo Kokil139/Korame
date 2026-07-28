@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    # GitHub Integration (optional - PR creation is skipped gracefully if unset)
+    github_token: Optional[str] = Field(default=None, alias="GITHUB_TOKEN")
+    github_repo: Optional[str] = Field(default=None, alias="GITHUB_REPO")
+    github_base_branch: str = Field(default="main", alias="GITHUB_BASE_BRANCH")
+
     # LiteLLM
 #     litellm_log: str = Field(default="INFO", alias="LITELLM_LOG")
 

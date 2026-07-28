@@ -17,6 +17,7 @@ from app.knowledge.vector import InMemoryVectorStore
 from app.knowledge.search import FullTextSearch, SemanticSearch, HybridSearch
 from app.knowledge.artifacts import ArtifactStore, ArtifactType, ArtifactStatus
 from app.knowledge.embeddings.embeddings import EmbeddingProvider, DummyEmbedding
+from app.knowledge.todos import TodoStore
 
 
 class KnowledgeFabric:
@@ -68,6 +69,9 @@ class KnowledgeFabric:
 
         # Artifacts
         self.artifact_store = ArtifactStore()
+
+        # Todo lists (Developer/Testing agent workflow)
+        self.todo_store = TodoStore()
 
     # ============================================================================
     # Memory APIs

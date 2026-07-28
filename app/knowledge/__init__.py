@@ -55,6 +55,12 @@ from app.knowledge.artifacts import (
     ArtifactVersion,
     ArtifactStore
 )
+from app.knowledge.todos import (
+    TodoStatus,
+    TodoItem,
+    TodoList,
+    TodoStore
+)
 from app.knowledge.knowledge_service import KnowledgeFabric
 
 __all__ = [
@@ -93,6 +99,11 @@ __all__ = [
     "Artifact",
     "ArtifactVersion",
     "ArtifactStore",
+    # Todos
+    "TodoStatus",
+    "TodoItem",
+    "TodoList",
+    "TodoStore",
     # Service
     "KnowledgeFabric"
 ]

@@ -12,10 +12,18 @@ from app.utils import logger, setup_logging
 from app.kernel import Registry
 from app.providers import OllamaProvider
 from app.router import ModelRouter
-from app.agents import RTEAgent
+from app.agents import RTEAgent, DeveloperAgent, TestingAgent
 from app.workflow import WorkflowEngine
 from app.knowledge import KnowledgeFabric
-from app.api import router, set_engine, set_memory
+from app.integrations import GitHubService
+from app.api import (
+    router,
+    set_engine,
+    set_memory,
+    development_router,
+    set_development_engine,
+    set_development_memory,
+)
 
 
 def create_app() -> FastAPI:
@@ -58,9 +66,34 @@ def create_app() -> FastAPI:
     registry.register_agent(rte_agent)
     logger.info("Registered RTE agent")
 
+    # Developer/Testing agents share the same qwen3:8b model via model_router
+    # for now (see docs/ARCHITECTURE.md); GitHub PR creation is skipped
+    # gracefully if GITHUB_TOKEN/GITHUB_REPO aren't set in .env.
+    github_service = GitHubService(
+        token=settings.github_token,
+        repo=settings.github_repo,
+        base_branch=settings.github_base_branch,
+    )
+    developer_agent = DeveloperAgent(
+        model_router=model_router,
+        todo_store=knowledge_fabric.todo_store,
+        github_service=github_service,
+    )
+    registry.register_agent(developer_agent)
+    logger.info(
+        "Registered Developer agent (GitHub PRs %s)"
+        % ("enabled" if github_service.is_configured() else "not configured")
+    )
+
+    testing_agent = TestingAgent(model_router=model_router)
+    registry.register_agent(testing_agent)
+    logger.info("Registered Testing agent")
+
     # Set up API dependencies
     set_engine(workflow_engine)
     set_memory(conversation_memory)
+    set_development_engine(workflow_engine)
+    set_development_memory(conversation_memory)
     logger.info("Initialized workflow engine and conversation memory")
 
     # Create FastAPI app
@@ -81,6 +114,7 @@ def create_app() -> FastAPI:
 
     # Include API routes
     app.include_router(router)
+    app.include_router(development_router)
 
     logger.info(f"Korame V1 ready on {settings.api_host}:{settings.api_port}")
 
