@@ -45,6 +45,24 @@ const ChatMessage: FC<ChatMessageProps> = ({ message }) => {
         <div className="chat-markdown">
           <ReactMarkdown>{message.content}</ReactMarkdown>
         </div>
+        {message.suggestions && message.suggestions.length > 0 && (
+          <div
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: `1px dashed ${theme.colors.border}`,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>💡 Suggestions</div>
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {message.suggestions.map((suggestion, idx) => (
+                <li key={idx} style={{ fontSize: 13 }}>
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 import { CHAT_ENDPOINT, CONVERSATIONS_ENDPOINT, RTE_AGENT_NAME } from "../utils/constants";
-import type { ChatApiResponse, ConversationHistoryResponse } from "../types/chat";
+import type { ChatApiResponse, ConversationHistoryResponse, ConversationListResponse } from "../types/chat";
 
 /**
  * Submit a business requirement (or a follow-up answer) to the RTE agent.
@@ -28,6 +28,12 @@ export async function fetchConversationHistory(
   const response = await apiClient.get<ConversationHistoryResponse>(
     `${CONVERSATIONS_ENDPOINT}/${conversationId}`
   );
+  return response.data;
+}
+
+/** List all known conversations (id + preview) to populate the "past conversations" list. */
+export async function listConversations(): Promise<ConversationListResponse> {
+  const response = await apiClient.get<ConversationListResponse>(CONVERSATIONS_ENDPOINT);
   return response.data;
 }
 

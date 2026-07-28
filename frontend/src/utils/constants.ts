@@ -8,3 +8,6 @@ export const HEALTH_ENDPOINT = "/api/v1/health";
 
 /** sessionStorage key used to resume the current RTE conversation across page reloads. */
 export const CONVERSATION_STORAGE_KEY = "korame.rte.conversationId";
+
+/** localStorage key used to persist the list of past conversations across browser sessions. */
+export const CONVERSATIONS_INDEX_STORAGE_KEY = "korame.rte.conversations";
