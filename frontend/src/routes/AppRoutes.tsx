@@ -1,8 +1,8 @@
-import React from "react";
+import type { FC } from "react";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import RTEPage from "../pages/RTEPage";
 
-const AppRoutes: React.FC = () => {
+const AppRoutes: FC = () => {
   return (
 	<BrowserRouter>
 	  <nav style={{ padding: 8, borderBottom: "1px solid #eee" }}>

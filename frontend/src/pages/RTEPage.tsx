@@ -1,107 +1,46 @@
-import React, { useState } from "react";
-import { submitBusinessRequirement } from "../api/chatApi";
+import type { FC } from "react";
+import { useChat } from "../hooks/useChat";
+import ChatWindow from "../components/chat/ChatWindow";
+import ChatInput from "../components/chat/ChatInput";
+import ErrorAlert from "../components/common/ErrorAlert";
 
-type Message = {
-  id: string;
-  role: "user" | "rte" | "system";
-  text: string;
-};
-
-const RTEPage: React.FC = () => {
-  const [requirement, setRequirement] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onSubmit = async (e?: React.FormEvent<HTMLFormElement | HTMLButtonElement>) => {
-    e?.preventDefault();
-    setError(null);
-    if (!requirement.trim()) return;
-    const userMsg: Message = {
-      id: String(Date.now()),
-      role: "user",
-      text: requirement.trim(),
-    };
-    setMessages((m: Message[]) => [...m, userMsg]);
-    setLoading(true);
-    try {
-      const payload = { requirement: requirement.trim() };
-      const data = await submitBusinessRequirement(payload);
-      // Expecting backend to return { messages: [{ role, text }] } or { questions: [...] }
-      if (data?.messages && Array.isArray(data.messages)) {
-        const newMsgs = data.messages.map((msg: any, idx: number) => ({
-          id: `srv-${Date.now()}-${idx}`,
-          role: msg.role || "rte",
-          text: msg.text || String(msg),
-        }));
-        setMessages((m: Message[]) => [...m, ...newMsgs]);
-      } else if (data?.questions && Array.isArray(data.questions)) {
-        const qMsgs = data.questions.map((q: any, idx: number) => ({
-          id: `q-${Date.now()}-${idx}`,
-          role: "rte",
-          text: q,
-        }));
-        setMessages((m: Message[]) => [...m, ...qMsgs]);
-      } else if (typeof data === "string") {
-          setMessages((m: Message[]) => [
-              ...m,
-              { id: `srv-${Date.now()}`, role: "rte", text: data },
-            ]);
-      } else {
-        setMessages((m: Message[]) => [
-          ...m,
-          { id: `srv-${Date.now()}`, role: "rte", text: "No response from RTE agent." },
-        ]);
-      }
-      setRequirement("");
-    } catch (err: any) {
-      setError(err?.message || "Failed to send requirement");
-    } finally {
-      setLoading(false);
-    }
-  };
+const RTEPage: FC = () => {
+  const { messages, isLoading, error, sendRequirement, startNewConversation } = useChat();
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>RTE - Business Requirement</h2>
-      <p>Provide your business requirement below. The RTE agent will reply and may ask clarifying questions.</p>
-
-      <form onSubmit={onSubmit} style={{ marginBottom: 12 }}>
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div>
-          <textarea
-            value={requirement}
-            onChange={(e) => setRequirement(e.target.value)}
-            rows={6}
-            style={{ width: "100%", padding: 8 }}
-            placeholder="Describe the business requirement..."
-            disabled={loading}
-          />
+          <h2 style={{ marginBottom: 4 }}>RTE - Business Requirements</h2>
+          <p style={{ color: "#5b6270", marginTop: 0 }}>
+            Describe what the business needs. The RTE agent will draft a user story and ask
+            clarifying questions if anything is missing before finalizing it.
+          </p>
         </div>
-        <div style={{ marginTop: 8 }}>
-          <button type="submit" onClick={onSubmit} disabled={loading}>
-            {loading ? "Sending..." : "Submit Requirement"}
-          </button>
-        </div>
-      </form>
-
-      {error && <div style={{ color: "red" }}>Error: {error}</div>}
-
-      <div>
-        <h3>Conversation</h3>
-        <div style={{ border: "1px solid #ddd", padding: 12, minHeight: 120 }}>
-          {messages.length === 0 && <div style={{ color: "#666" }}>No messages yet.</div>}
-          {messages.map((m) => (
-            <div key={m.id} style={{ marginBottom: 8 }}>
-              <strong>{m.role === "user" ? "You" : m.role === "rte" ? "RTE" : "System"}:</strong>
-              <div>{m.text}</div>
-            </div>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={startNewConversation}
+          disabled={messages.length === 0}
+          style={{
+            background: "transparent",
+            border: "1px solid #d7dbe3",
+            borderRadius: 8,
+            padding: "6px 12px",
+            fontSize: 13,
+            whiteSpace: "nowrap",
+            cursor: messages.length === 0 ? "not-allowed" : "pointer",
+          }}
+        >
+          New conversation
+        </button>
       </div>
+
+      <ChatWindow messages={messages} isLoading={isLoading} />
+      <ChatInput onSubmit={sendRequirement} disabled={isLoading} />
+      {error && <ErrorAlert message={error} />}
     </div>
   );
 };
 
 export default RTEPage;
-
 
