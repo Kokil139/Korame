@@ -14,7 +14,6 @@ from app.providers import OllamaProvider
 from app.router import ModelRouter
 from app.agents import RTEAgent
 from app.workflow import WorkflowEngine
-from app.knowledge.memory import ConversationMemory
 from app.knowledge import KnowledgeFabric
 from app.api import router, set_engine, set_memory
 
@@ -37,10 +36,12 @@ def create_app() -> FastAPI:
     registry = Registry()
     model_router = ModelRouter()
     workflow_engine = WorkflowEngine(registry, model_router)
-    conversation_memory = ConversationMemory()
 
-    # Initialize Knowledge Fabric
+    # Initialize Knowledge Fabric. Its conversation_memory is used as THE
+    # conversation store (single source of truth) so agents can also use the
+    # fabric's search/artifact APIs against the same data.
     knowledge_fabric = KnowledgeFabric()
+    conversation_memory = knowledge_fabric.conversation_memory
     logger.info("Initialized Knowledge Fabric")
 
     # Register providers
@@ -53,7 +54,7 @@ def create_app() -> FastAPI:
     logger.info(f"Registered Ollama provider: {settings.ollama_model}")
 
     # Register agents
-    rte_agent = RTEAgent(model_router=model_router)
+    rte_agent = RTEAgent(model_router=model_router, knowledge_fabric=knowledge_fabric)
     registry.register_agent(rte_agent)
     logger.info("Registered RTE agent")
 

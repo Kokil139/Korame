@@ -28,6 +28,7 @@ class ChatResponse(BaseModel):
     user_story: Optional[str] = None
     needs_clarification: bool = False
     questions: list[str] = []
+    suggestions: list[str] = []
     error: Optional[str] = None
 
 
@@ -110,7 +111,11 @@ async def chat(request: ChatRequest) -> ChatResponse:
         # clarifying questions with full context of what was already discussed
         response = await _workflow_engine.execute(
             agent_name=request.agent_name,
-            input_data={"requirement": request.requirement, "history": history},
+            input_data={
+                "requirement": request.requirement,
+                "history": history,
+                "conversation_id": conversation_id,
+            },
             task_id=task_id
         )
 
@@ -119,6 +124,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             user_story = response.data.get("user_story", "")
             needs_clarification = response.data.get("needs_clarification", False)
             questions = response.data.get("questions", [])
+            suggestions = response.data.get("suggestions", [])
             _conversation_memory.add_message(
                 conversation_id=conversation_id,
                 role="assistant",
@@ -134,7 +140,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 status="success",
                 user_story=user_story,
                 needs_clarification=needs_clarification,
-                questions=questions
+                questions=questions,
+                suggestions=suggestions
             )
         else:
             error_msg = response.error or "Unknown error"
@@ -156,6 +163,38 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversations")
+async def list_conversations() -> dict[str, Any]:
+    """
+    List all known conversations with a short preview, for building a
+    "past conversations" list in the frontend.
+
+    Returns:
+        List of conversation summaries (id, preview, message count, last update)
+    """
+    if not _conversation_memory:
+        raise HTTPException(status_code=500, detail="Conversation memory not initialized")
+
+    summaries = []
+    for conversation_id in _conversation_memory.list_conversations():
+        messages = _conversation_memory.get_conversation(conversation_id)
+        if not messages:
+            continue
+
+        first_user_message = next((m for m in messages if m.role == "user"), None)
+        last_message = messages[-1]
+
+        summaries.append({
+            "conversation_id": conversation_id,
+            "preview": (first_user_message.content[:120] if first_user_message else ""),
+            "message_count": len(messages),
+            "updated_at": last_message.timestamp.isoformat()
+        })
+
+    summaries.sort(key=lambda s: s["updated_at"], reverse=True)
+    return {"conversations": summaries}
 
 
 @router.get("/conversations/{conversation_id}")
