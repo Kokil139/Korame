@@ -29,17 +29,8 @@ const ConversationSidebar: FC<ConversationSidebarProps> = ({
       <button
         type="button"
         onClick={onNewConversation}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          marginBottom: 12,
-          borderRadius: 8,
-          border: `1px solid ${theme.colors.primary}`,
-          background: theme.colors.primary,
-          color: theme.colors.primaryText,
-          cursor: "pointer",
-          fontSize: 13,
-        }}
+        className="korame-btn korame-btn-primary"
+        style={{ width: "100%", marginBottom: 12 }}
       >
         + New conversation
       </button>
@@ -58,12 +49,12 @@ const ConversationSidebar: FC<ConversationSidebarProps> = ({
             type="button"
             key={conversation.id}
             onClick={() => onSelect(conversation.id)}
+            className={`korame-conv-item${conversation.id === activeConversationId ? " korame-conv-item-active" : ""}`}
             style={{
               textAlign: "left",
               padding: "8px 10px",
               borderRadius: 8,
               border: "1px solid transparent",
-              background: conversation.id === activeConversationId ? theme.colors.assistantBubble : "transparent",
               cursor: "pointer",
             }}
           >

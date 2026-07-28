@@ -34,6 +34,7 @@ const ChatInput: FC<ChatInputProps> = ({ onSubmit, disabled }) => {
         rows={4}
         placeholder="Describe the business requirement, or answer the RTE agent's questions..."
         disabled={disabled}
+        className="korame-textarea"
         style={{
           width: "100%",
           padding: 10,
@@ -48,13 +49,8 @@ const ChatInput: FC<ChatInputProps> = ({ onSubmit, disabled }) => {
         <button
           type="submit"
           disabled={disabled || !value.trim()}
+          className="korame-btn korame-btn-primary"
           style={{
-            background: "#2f5bea",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "8px 18px",
-            fontSize: 14,
             cursor: disabled ? "not-allowed" : "pointer",
             opacity: disabled || !value.trim() ? 0.6 : 1,
           }}

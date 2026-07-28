@@ -4,6 +4,7 @@ import type { ChatMessage as ChatMessageType } from "../../types/chat";
 import ChatMessage from "./ChatMessage";
 import TypingIndicator from "./TypingIndicator";
 import EmptyState from "../common/EmptyState";
+import { theme } from "../../theme/theme";
 
 interface ChatWindowProps {
   messages: ChatMessageType[];
@@ -21,13 +22,14 @@ const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading }) => {
   return (
     <div
       style={{
-        border: "1px solid #e2e5eb",
-        borderRadius: 10,
+        border: `1px solid ${theme.colors.border}`,
+        borderRadius: theme.radiusLg,
         padding: 16,
         minHeight: 320,
         maxHeight: 480,
         overflowY: "auto",
-        background: "#fafbfc",
+        background: theme.colors.surface,
+        boxShadow: theme.shadow,
       }}
     >
       {messages.length === 0 && !isLoading ? (

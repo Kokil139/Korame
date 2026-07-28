@@ -66,3 +66,264 @@ button {
     transform: rotate(360deg);
   }
 }
+
+/* ---------- Decorative background ---------- */
+
+body {
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(600px circle at 15% 20%, rgba(77, 123, 255, 0.16), transparent 60%),
+    radial-gradient(520px circle at 85% 12%, rgba(124, 92, 255, 0.13), transparent 60%),
+    radial-gradient(700px circle at 50% 100%, rgba(47, 91, 234, 0.09), transparent 60%);
+  background-repeat: no-repeat;
+  animation: korame-drift 32s ease-in-out infinite alternate;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(27, 31, 39, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  -webkit-mask-image: radial-gradient(circle at 50% 0%, black, transparent 65%);
+  mask-image: radial-gradient(circle at 50% 0%, black, transparent 65%);
+}
+
+@keyframes korame-drift {
+  0% {
+    background-position: 0% 0%, 100% 0%, 50% 100%;
+  }
+  100% {
+    background-position: 6% 8%, 92% 10%, 44% 92%;
+  }
+}
+
+/* ---------- App shell ---------- */
+
+.korame-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e2e5eb;
+}
+
+.korame-header-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.korame-page-fade {
+  animation: korame-fade-in 0.35s ease-out both;
+}
+
+@keyframes korame-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Logo mark ---------- */
+
+.korame-logo-flow {
+  stroke-dasharray: 4 5;
+  animation: korame-logo-flow 2.4s linear infinite;
+}
+
+@keyframes korame-logo-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+.korame-logo-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: korame-logo-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes korame-logo-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+
+/* ---------- Home hero ---------- */
+
+.korame-hero-section {
+  background-image: url("/network-graphic.svg");
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
+}
+
+.korame-hero {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 96px 24px 64px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.korame-hero-title {
+  margin: 8px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.korame-hero-subtitle {
+  margin: 0;
+  color: #5b6270;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.korame-hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---------- Buttons ---------- */
+
+.korame-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.korame-btn:hover {
+  transform: translateY(-1px);
+}
+
+.korame-btn-primary {
+  background: #2f5bea;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(47, 91, 234, 0.25);
+}
+
+.korame-btn-primary:hover {
+  background: #2750d1;
+}
+
+.korame-btn-secondary {
+  background: #ffffff;
+  color: #1b1f27;
+  border: 1px solid #e2e5eb;
+}
+
+.korame-btn-secondary:hover {
+  border-color: #c7cede;
+}
+
+/* ---------- Chat & conversation list ---------- */
+
+.korame-message-in {
+  animation: korame-message-in 0.25s ease-out both;
+}
+
+@keyframes korame-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.korame-conv-item {
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.korame-conv-item:hover {
+  background: #eef1f7;
+}
+
+.korame-conv-item-active {
+  background: #eef1f7;
+}
+
+.korame-textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.korame-textarea:focus {
+  outline: none;
+  border-color: #2f5bea;
+  box-shadow: 0 0 0 3px rgba(47, 91, 234, 0.12);
+}
+
+.korame-card {
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.korame-card:hover {
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
+  transform: translateY(-1px);
+  border-color: #c7cede;
+}
+
+.korame-empty-state {
+  animation: korame-message-in 0.3s ease-out both;
+}
+
+.korame-alert-in {
+  animation: korame-alert-in 0.25s ease-out both;
+}
+
+@keyframes korame-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

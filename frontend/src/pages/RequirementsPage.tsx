@@ -35,6 +35,7 @@ const RequirementsPage: FC = () => {
               type="button"
               key={conversation.id}
               onClick={() => navigate(`/rte?c=${conversation.id}`)}
+              className="korame-card"
               style={{
                 textAlign: "left",
                 padding: "12px 14px",

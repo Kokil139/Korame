@@ -1,35 +1,38 @@
 import type { FC } from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import AppHeader from "../components/layout/AppHeader";
+import HomePage from "../pages/HomePage";
 import RTEPage from "../pages/RTEPage";
 import RequirementsPage from "../pages/RequirementsPage";
+
+/**
+ * Rendered inside <BrowserRouter> so it can read the current location. Keying
+ * <main> on the pathname forces React to remount it on every page change,
+ * which is what actually re-triggers the CSS fade-in animation - without the
+ * key, React just swaps the Route's children in place and the animation
+ * (tied to the element's initial mount) never replays after the first load.
+ */
+const AppShell: FC = () => {
+  const location = useLocation();
+
+  return (
+    <>
+      <AppHeader />
+      <main key={location.pathname} className="korame-page-fade">
+        <Routes>
+          <Route path="/rte" element={<RTEPage />} />
+          <Route path="/requirements" element={<RequirementsPage />} />
+          <Route path="/" element={<HomePage />} />
+        </Routes>
+      </main>
+    </>
+  );
+};
 
 const AppRoutes: FC = () => {
   return (
 	<BrowserRouter>
-	  <nav style={{ padding: 8, borderBottom: "1px solid #eee" }}>
-		<Link to="/">Home</Link>
-		<span style={{ margin: "0 8px" }}>|</span>
-		<Link to="/rte">RTE - Requirements</Link>
-		<span style={{ margin: "0 8px" }}>|</span>
-		<Link to="/requirements">Requirements</Link>
-	  </nav>
-	  <Routes>
-		<Route path="/rte" element={<RTEPage />} />
-		<Route path="/requirements" element={<RequirementsPage />} />
-		<Route
-		  path="/"
-		  element={
-			<div style={{ padding: 20 }}>
-			  <h2>Welcome</h2>
-			  <p>
-				Use the <Link to="/rte">RTE - Requirements</Link> page to submit a business
-				requirement and receive clarifying questions or a response from the RTE agent.
-				Visit <Link to="/requirements">Requirements</Link> to browse finalized user stories.
-			  </p>
-			</div>
-		  }
-		/>
-	  </Routes>
+	  <AppShell />
 	</BrowserRouter>
   );
 };

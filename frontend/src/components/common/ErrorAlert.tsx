@@ -9,6 +9,7 @@ interface ErrorAlertProps {
 const ErrorAlert: FC<ErrorAlertProps> = ({ message }) => (
   <div
     role="alert"
+    className="korame-alert-in"
     style={{
       background: theme.colors.errorBg,
       color: theme.colors.errorText,

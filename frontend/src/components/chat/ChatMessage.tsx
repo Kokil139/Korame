@@ -26,7 +26,10 @@ const ChatMessage: FC<ChatMessageProps> = ({ message }) => {
   const label = isUser ? "You" : isError ? "System" : "RTE Agent";
 
   return (
-    <div style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", marginBottom: 12 }}>
+    <div
+      className="korame-message-in"
+      style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", marginBottom: 12 }}
+    >
       <div
         style={{
           maxWidth: "75%",
