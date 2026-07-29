@@ -227,9 +227,22 @@ class WorkflowEngine:
 
                     if test_result["passed"]:
                         item.status = TodoStatus.COMPLETE
+                        logger.info(f"Task '{item.title}' passed testing on attempt {attempt}")
                         break
 
                     item.status = TodoStatus.FAILED
+                    # Nothing else logs the actual generated code or test
+                    # failure reason anywhere - without this, a repeatedly
+                    # failing task looks like silent "no progress" with only
+                    # the Ollama call-timing logs to go on. This is the
+                    # concrete evidence needed to tell a genuine code/test
+                    # quality problem apart from an infrastructure one.
+                    logger.warning(
+                        f"Task '{item.title}' failed testing (attempt {attempt}/{max_attempts_per_item}):\n"
+                        f"--- Generated code ---\n{item.code}\n"
+                        f"--- Test code ---\n{item.test_code}\n"
+                        f"--- Test output ---\n{test_result['output']}"
+                    )
                     test_feedback = test_result["output"]
 
                 if item.status != TodoStatus.COMPLETE:
