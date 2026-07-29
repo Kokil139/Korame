@@ -1,13 +1,17 @@
 """
 Isolated sandbox for executing Developer Agent code and Testing Agent tests.
 
-Generated code is written under <repo_root>/workspace/<run_id>/ - never inside
-app/ - and cleaned up after each run. pytest executes as a subprocess with a
+Generated code is written under the OS temp directory (never inside the repo)
+and cleaned up after each run. It must live outside the repo: when running the
+server with `uvicorn --reload`, its file watcher would otherwise pick up every
+generated implementation.py as a source change and restart the whole app -
+wiping the in-memory TodoStore mid-workflow and turning every subsequent
+GET /api/v1/todos/{id} poll into a 404. pytest executes as a subprocess with a
 timeout, using the SAME Python interpreter running the server (so it shares
 the same environment/dependencies).
 
 Security note: this executes LLM-generated code. It is isolated to a
-dedicated, git-ignored workspace folder and bounded by a timeout, but this is
+dedicated, per-run temp folder and bounded by a timeout, but this is
 process-level isolation, not a full container/VM sandbox. For a production
 deployment, consider running this inside a properly sandboxed/containerized
 environment instead.
@@ -17,11 +21,10 @@ import asyncio
 import os
 import shutil
 import sys
+import tempfile
 from dataclasses import dataclass
 
-_WORKSPACE_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "workspace")
-)
+_WORKSPACE_ROOT = os.path.join(tempfile.gettempdir(), "korame-workspace")
 
 
 @dataclass

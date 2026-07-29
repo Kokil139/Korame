@@ -3,11 +3,19 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useChat } from "../hooks/useChat";
 import { useWorkflowStore } from "../store/workflowStore";
+import { extractStoryTitle } from "../store/chatStore";
 import ChatWindow from "../components/chat/ChatWindow";
 import ChatInput from "../components/chat/ChatInput";
 import ConversationSidebar from "../components/chat/ConversationSidebar";
 import ErrorAlert from "../components/common/ErrorAlert";
 import type { ChatMessage } from "../types/chat";
+
+/** Last-resort title when the story text doesn't mention "user story title" at all. */
+function firstLineFallback(content: string): string {
+  const firstLine = content.split("\n").find((line) => line.trim().length > 0) ?? "";
+  const cleaned = firstLine.replace(/[#*_`]/g, "").trim();
+  return cleaned.slice(0, 80) || "Untitled story";
+}
 
 const RTEPage: FC = () => {
   const {
@@ -60,8 +68,7 @@ const RTEPage: FC = () => {
   };
 
   const handleSendToDevelopment = async (message: ChatMessage) => {
-    const titleMatch = message.content.match(/\*\*User Story Title\*\*:\s*(.+)/i);
-    const storyTitle = titleMatch ? titleMatch[1].trim() : "Untitled story";
+    const storyTitle = extractStoryTitle(message.content) || firstLineFallback(message.content);
 
     await startDevelopmentWorkflow({
       storyTitle,

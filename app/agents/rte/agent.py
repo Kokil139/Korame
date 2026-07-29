@@ -26,8 +26,25 @@ _NUMBERED_ITEM_PATTERN = re.compile(r"^[ \t]*\d+[\.\)][ \t]*(.+)$", re.MULTILINE
 _SUGGESTIONS_HEADER_PATTERN = re.compile(r"^[ \t]*SUGGESTIONS:[ \t]*$", re.IGNORECASE | re.MULTILINE)
 # Matches bullet list items, e.g. "- suggestion" or "* suggestion"
 _BULLET_ITEM_PATTERN = re.compile(r"^[ \t]*[-*][ \t]*(.+)$", re.MULTILINE)
-# Extracts the title out of a finalized story so it can be stored as an artifact.
-_TITLE_PATTERN = re.compile(r"\*\*User Story Title\*\*:\s*(.+)", re.IGNORECASE)
+
+
+def _extract_title(content: str, fallback: str) -> str:
+    """
+    Find the story's title line and return the text after its first colon.
+
+    Looks for any line mentioning "user story title" rather than requiring one
+    exact markdown pattern - small local models don't always format it exactly
+    as "**User Story Title**:" (the colon sometimes ends up inside the bold
+    markers instead, e.g. "**User Story Title:**"). Strips markdown emphasis
+    characters from the result. Falls back to the given text if no such line
+    is found at all.
+    """
+    for line in content.splitlines():
+        if "user story title" in line.lower() and ":" in line:
+            title = line.split(":", 1)[1].replace("*", "").strip()
+            if title:
+                return title
+    return fallback
 
 
 class RTEAgent(BaseAgent):
@@ -201,8 +218,7 @@ Generate a well-structured user story based on this input."""
         if not self.knowledge_fabric:
             return
 
-        title_match = _TITLE_PATTERN.search(content)
-        title = title_match.group(1).strip() if title_match else requirement[:80]
+        title = _extract_title(content, fallback=requirement[:80])
 
         try:
             self.knowledge_fabric.create_artifact(

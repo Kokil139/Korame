@@ -62,9 +62,21 @@ function upsertConversation(list: ConversationSummary[], entry: ConversationSumm
 }
 
 /** Extract the story title ("**User Story Title**: ...") out of a finalized agent response, if present. */
-function extractStoryTitle(content: string): string | undefined {
-  const match = content.match(/\*\*User Story Title\*\*:\s*(.+)/i);
-  return match ? match[1].trim() : undefined;
+export function extractStoryTitle(content: string): string | undefined {
+  // Look for any line mentioning "user story title" rather than requiring one
+  // exact markdown pattern - small local models don't always format it
+  // exactly as "**User Story Title**:" (the colon sometimes ends up inside
+  // the bold markers instead, e.g. "**User Story Title:**"). Take everything
+  // after the first colon on that line and strip emphasis characters.
+  for (const line of content.split("\n")) {
+    if (/user story title/i.test(line)) {
+      const colonIndex = line.indexOf(":");
+      if (colonIndex === -1) continue;
+      const cleaned = line.slice(colonIndex + 1).replace(/\*/g, "").trim();
+      if (cleaned) return cleaned;
+    }
+  }
+  return undefined;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
