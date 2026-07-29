@@ -1,0 +1,30 @@
+
+=================================== ERRORS ====================================
+___________________ ERROR collecting test_implementation.py ___________________
+C:\Users\Kokil Rana\Documents\Korame\venv\Lib\site-packages\_pytest\python.py:508: in importtestmodule
+    mod = import_path(
+C:\Users\Kokil Rana\Documents\Korame\venv\Lib\site-packages\_pytest\pathlib.py:596: in import_path
+    importlib.import_module(module_name)
+C:\Users\Kokil Rana\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+C:\Users\Kokil Rana\Documents\Korame\venv\Lib\site-packages\_pytest\assertion\rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+test_implementation.py:2: in <module>
+    from implementation import implementation as html_content
+E     File "C:\Users\KOKILR~1\AppData\Local\Temp\korame-workspace\483d9640-e026-463a-a118-07600eecd275-c0fba6be-6963-48cd-9680-d2f1b1966ca1\implementation.py", line 12
+E       height: 100vh;
+E                 ^
+E   SyntaxError: invalid decimal literal
+=========================== short test summary info ===========================
+ERROR test_implementation.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.19s
