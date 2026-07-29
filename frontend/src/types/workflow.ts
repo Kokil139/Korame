@@ -45,6 +45,31 @@ export interface StartDevelopmentResponse {
   status: string;
 }
 
+/** One story's progress within a multi-story run. */
+export interface StoryRunStoryStatus {
+  title: string;
+  todo_list_id: string | null;
+  status: string;
+  all_complete: boolean;
+  pull_request: PullRequestResult | null;
+  error?: string | null;
+}
+
+/** Shape of the response returned by GET /api/v1/story-runs/{id}. */
+export interface StoryRunStatus {
+  story_run_id: string;
+  status: "starting" | "running" | "complete" | "failed" | "error";
+  current_index: number;
+  stories: StoryRunStoryStatus[];
+  error?: string | null;
+}
+
+/** Shape of the response returned by POST /api/v1/develop-stories. */
+export interface StartStoryRunResponse {
+  story_run_id: string;
+  status: string;
+}
+
 /** A single entry in the frontend-side activity log, derived from status polls. */
 export interface ActivityLogEntry {
   id: string;

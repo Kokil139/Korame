@@ -89,3 +89,46 @@ class TodoStore:
     def list_all(self) -> list[TodoList]:
         """Get all tracked todo lists."""
         return list(self._lists.values())
+
+
+@dataclass
+class StoryRun:
+    """
+    Tracks automatic, sequential development across MULTIPLE stories that RTE
+    decided a requirement needed to be split into (see rte.md). Each story
+    gets its own TodoList, run one at a time in order via the exact same
+    implement -> test -> retry -> PR cycle used for a single story - this
+    just sequences that cycle across several stories instead of requiring a
+    separate manual "Send to Development" click per story.
+    """
+    id: str
+    story_titles: list[str]
+    stories: list[str]
+    current_index: int = 0
+    # TodoList IDs created so far, in the same order as story_titles/stories -
+    # grows by one each time a new story's cycle starts.
+    todo_list_ids: list[str] = field(default_factory=list)
+    # starting | running | complete | failed | error
+    status: str = "starting"
+    error: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+class StoryRunStore:
+    """In-memory store of multi-story runs, shared the same way TodoStore is."""
+
+    def __init__(self):
+        """Initialize an empty store."""
+        self._runs: dict[str, StoryRun] = {}
+
+    def create(self, story_run: StoryRun) -> None:
+        """Register a new story run."""
+        self._runs[story_run.id] = story_run
+
+    def get(self, story_run_id: str) -> Optional[StoryRun]:
+        """Get a story run by ID."""
+        return self._runs.get(story_run_id)
+
+    def list_all(self) -> list[StoryRun]:
+        """Get all tracked story runs."""
+        return list(self._runs.values())

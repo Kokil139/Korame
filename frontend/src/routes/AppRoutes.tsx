@@ -5,6 +5,7 @@ import HomePage from "../pages/HomePage";
 import RTEPage from "../pages/RTEPage";
 import RequirementsPage from "../pages/RequirementsPage";
 import WorkflowPage from "../pages/WorkflowPage";
+import StoryRunPage from "../pages/StoryRunPage";
 
 /**
  * Rendered inside <BrowserRouter> so it can read the current location. Keying
@@ -24,6 +25,7 @@ const AppShell: FC = () => {
           <Route path="/rte" element={<RTEPage />} />
           <Route path="/requirements" element={<RequirementsPage />} />
           <Route path="/workflow" element={<WorkflowPage />} />
+          <Route path="/story-run" element={<StoryRunPage />} />
           <Route path="/" element={<HomePage />} />
         </Routes>
       </main>

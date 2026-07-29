@@ -5,6 +5,7 @@ from app.api.development import (
     router as development_router,
     set_engine as set_development_engine,
     set_memory as set_development_memory,
+    set_story_run_store as set_development_story_run_store,
 )
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "development_router",
     "set_development_engine",
     "set_development_memory",
+    "set_development_story_run_store",
 ]
 

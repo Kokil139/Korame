@@ -10,10 +10,11 @@ interface ChatWindowProps {
   messages: ChatMessageType[];
   isLoading: boolean;
   onSendToDevelopment?: (storyContent: string) => void | Promise<void>;
+  onSendAllToDevelopment?: (stories: string[]) => void | Promise<void>;
 }
 
 /** Scrollable conversation area; auto-scrolls to the newest message. */
-const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading, onSendToDevelopment }) => {
+const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading, onSendToDevelopment, onSendAllToDevelopment }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -40,7 +41,12 @@ const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading, onSendToDevelopm
         />
       ) : (
         messages.map((message) => (
-          <ChatMessage key={message.id} message={message} onSendToDevelopment={onSendToDevelopment} />
+          <ChatMessage
+            key={message.id}
+            message={message}
+            onSendToDevelopment={onSendToDevelopment}
+            onSendAllToDevelopment={onSendAllToDevelopment}
+          />
         ))
       )}
       {isLoading && <TypingIndicator />}

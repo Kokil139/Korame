@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useChat } from "../hooks/useChat";
 import { useWorkflowStore } from "../store/workflowStore";
+import { useStoryRunStore } from "../store/storyRunStore";
 import { extractStoryTitle } from "../store/chatStore";
 import ChatWindow from "../components/chat/ChatWindow";
 import ChatInput from "../components/chat/ChatInput";
@@ -30,6 +31,7 @@ const RTEPage: FC = () => {
     refreshConversationList,
   } = useChat();
   const startDevelopmentWorkflow = useWorkflowStore((s) => s.start);
+  const startStoryRunWorkflow = useStoryRunStore((s) => s.start);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -81,6 +83,24 @@ const RTEPage: FC = () => {
     }
   };
 
+  // RTE decided this requirement needed multiple independent stories - the
+  // Developer works through them automatically, one at a time, only starting
+  // the next once the current one completes (see /story-run for the view).
+  const handleSendAllStoriesToDevelopment = async (stories: string[]) => {
+    const storyTitles = stories.map((story) => extractStoryTitle(story) || firstLineFallback(story));
+
+    await startStoryRunWorkflow({
+      stories,
+      storyTitles,
+      conversationId: conversationId ?? undefined,
+    });
+
+    const { storyRunId } = useStoryRunStore.getState();
+    if (storyRunId) {
+      navigate(`/story-run?id=${storyRunId}`);
+    }
+  };
+
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", padding: 24, display: "flex" }}>
       <ConversationSidebar
@@ -105,6 +125,7 @@ const RTEPage: FC = () => {
           messages={messages}
           isLoading={isLoading || isLoadingHistory}
           onSendToDevelopment={handleSendToDevelopment}
+          onSendAllToDevelopment={handleSendAllStoriesToDevelopment}
         />
         <ChatInput onSubmit={sendRequirement} disabled={isLoading} />
         {error && <ErrorAlert message={error} />}

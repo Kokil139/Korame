@@ -6,17 +6,19 @@ import { theme } from "../../theme/theme";
 
 interface ChatMessageProps {
   message: ChatMessageType;
-  /** Shown as a button on each finalized story block; receives that story's own text. */
+  /** Shown as a button on a single finalized story; receives that story's own text. */
   onSendToDevelopment?: (storyContent: string) => void | Promise<void>;
+  /** Shown once for a split (multi-story) reply; receives all the stories, in order, for automatic sequential development. */
+  onSendAllToDevelopment?: (stories: string[]) => void | Promise<void>;
 }
 
 interface SendToDevelopmentButtonProps {
-  storyContent: string;
-  onSend: (storyContent: string) => void | Promise<void>;
+  label: string;
+  onSend: () => void | Promise<void>;
 }
 
 /** Its own isSending state per instance, so sending one story in a multi-story reply doesn't disable the others. */
-const SendToDevelopmentButton: FC<SendToDevelopmentButtonProps> = ({ storyContent, onSend }) => {
+const SendToDevelopmentButton: FC<SendToDevelopmentButtonProps> = ({ label, onSend }) => {
   const [isSending, setIsSending] = useState(false);
 
   return (
@@ -29,25 +31,25 @@ const SendToDevelopmentButton: FC<SendToDevelopmentButtonProps> = ({ storyConten
         if (isSending) return;
         setIsSending(true);
         try {
-          await onSend(storyContent);
+          await onSend();
         } finally {
           setIsSending(false);
         }
       }}
     >
-      {isSending ? "Starting..." : "Send to Development \u2192"}
+      {isSending ? "Starting..." : label}
     </button>
   );
 };
 
 /** Renders a single chat bubble, styled differently for user/assistant/clarification/error messages. */
-const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment }) => {
+const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment, onSendAllToDevelopment }) => {
   const isUser = message.role === "user";
   const isError = Boolean(message.isError);
   const isClarification = Boolean(message.needsClarification);
-  const canSendToDevelopment = !isUser && !isError && !isClarification && Boolean(onSendToDevelopment);
+  const canSendToDevelopment = !isUser && !isError && !isClarification;
   // RTE usually finalizes one story; only treat it as a "split" reply (and
-  // show separate blocks/buttons) when there's genuinely more than one.
+  // show the stepper/combined button) when there's genuinely more than one.
   const stories = message.stories && message.stories.length > 1 ? message.stories : null;
 
   const bubbleBackground = isError
@@ -99,11 +101,6 @@ const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment }) => 
                 <div className="chat-markdown">
                   <ReactMarkdown>{storyContent}</ReactMarkdown>
                 </div>
-                {canSendToDevelopment && onSendToDevelopment && (
-                  <div style={{ marginTop: 8 }}>
-                    <SendToDevelopmentButton storyContent={storyContent} onSend={onSendToDevelopment} />
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -130,9 +127,20 @@ const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment }) => 
             </ul>
           </div>
         )}
-        {!stories && canSendToDevelopment && onSendToDevelopment && (
+        {canSendToDevelopment && stories && onSendAllToDevelopment && (
           <div style={{ marginTop: 8 }}>
-            <SendToDevelopmentButton storyContent={message.content} onSend={onSendToDevelopment} />
+            <SendToDevelopmentButton
+              label={`Send All ${stories.length} Stories to Development \u2192`}
+              onSend={() => onSendAllToDevelopment(stories)}
+            />
+          </div>
+        )}
+        {canSendToDevelopment && !stories && onSendToDevelopment && (
+          <div style={{ marginTop: 8 }}>
+            <SendToDevelopmentButton
+              label="Send to Development \u2192"
+              onSend={() => onSendToDevelopment(message.content)}
+            />
           </div>
         )}
       </div>

@@ -35,6 +35,7 @@ from app.api import (
     development_router,
     set_development_engine,
     set_development_memory,
+    set_development_story_run_store,
 )
 
 
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     set_memory(conversation_memory)
     set_development_engine(workflow_engine)
     set_development_memory(conversation_memory)
+    set_development_story_run_store(knowledge_fabric.story_run_store)
     logger.info("Initialized workflow engine and conversation memory")
 
     # Create FastAPI app
