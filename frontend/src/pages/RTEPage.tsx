@@ -1,11 +1,13 @@
 import type { FC } from "react";
 import { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useChat } from "../hooks/useChat";
+import { useWorkflowStore } from "../store/workflowStore";
 import ChatWindow from "../components/chat/ChatWindow";
 import ChatInput from "../components/chat/ChatInput";
 import ConversationSidebar from "../components/chat/ConversationSidebar";
 import ErrorAlert from "../components/common/ErrorAlert";
+import type { ChatMessage } from "../types/chat";
 
 const RTEPage: FC = () => {
   const {
@@ -20,7 +22,9 @@ const RTEPage: FC = () => {
     loadConversation,
     refreshConversationList,
   } = useChat();
+  const startDevelopmentWorkflow = useWorkflowStore((s) => s.start);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Sync the local conversation list with the backend once on mount.
   useEffect(() => {
@@ -55,6 +59,22 @@ const RTEPage: FC = () => {
     startNewConversation();
   };
 
+  const handleSendToDevelopment = async (message: ChatMessage) => {
+    const titleMatch = message.content.match(/\*\*User Story Title\*\*:\s*(.+)/i);
+    const storyTitle = titleMatch ? titleMatch[1].trim() : "Untitled story";
+
+    await startDevelopmentWorkflow({
+      storyTitle,
+      story: message.content,
+      conversationId: conversationId ?? undefined,
+    });
+
+    const { todoListId } = useWorkflowStore.getState();
+    if (todoListId) {
+      navigate(`/workflow?id=${todoListId}`);
+    }
+  };
+
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", padding: 24, display: "flex" }}>
       <ConversationSidebar
@@ -75,7 +95,11 @@ const RTEPage: FC = () => {
           </div>
         </div>
 
-        <ChatWindow messages={messages} isLoading={isLoading || isLoadingHistory} />
+        <ChatWindow
+          messages={messages}
+          isLoading={isLoading || isLoadingHistory}
+          onSendToDevelopment={handleSendToDevelopment}
+        />
         <ChatInput onSubmit={sendRequirement} disabled={isLoading} />
         {error && <ErrorAlert message={error} />}
       </div>

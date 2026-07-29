@@ -9,10 +9,11 @@ import { theme } from "../../theme/theme";
 interface ChatWindowProps {
   messages: ChatMessageType[];
   isLoading: boolean;
+  onSendToDevelopment?: (message: ChatMessageType) => void;
 }
 
 /** Scrollable conversation area; auto-scrolls to the newest message. */
-const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading }) => {
+const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading, onSendToDevelopment }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -38,7 +39,9 @@ const ChatWindow: FC<ChatWindowProps> = ({ messages, isLoading }) => {
           description="Describe a business requirement below. The RTE agent will draft a user story and ask clarifying questions if anything is unclear."
         />
       ) : (
-        messages.map((message) => <ChatMessage key={message.id} message={message} />)
+        messages.map((message) => (
+          <ChatMessage key={message.id} message={message} onSendToDevelopment={onSendToDevelopment} />
+        ))
       )}
       {isLoading && <TypingIndicator />}
       <div ref={bottomRef} />

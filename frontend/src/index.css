@@ -327,3 +327,31 @@ body::after {
     transform: translateY(0);
   }
 }
+
+/* ---------- Agent workflow visualization ---------- */
+
+.korame-agent-dot-pulse {
+  animation: korame-agent-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes korame-agent-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(47, 91, 234, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(47, 91, 234, 0);
+  }
+}
+
+.korame-agent-line-active {
+  background: linear-gradient(90deg, #2f5bea, #7c5cff, #2f5bea);
+  background-size: 200% 100%;
+  animation: korame-agent-line-flow 1.5s linear infinite;
+}
+
+@keyframes korame-agent-line-flow {
+  to {
+    background-position: -200% 0;
+  }
+}

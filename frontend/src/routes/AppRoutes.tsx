@@ -4,6 +4,7 @@ import AppHeader from "../components/layout/AppHeader";
 import HomePage from "../pages/HomePage";
 import RTEPage from "../pages/RTEPage";
 import RequirementsPage from "../pages/RequirementsPage";
+import WorkflowPage from "../pages/WorkflowPage";
 
 /**
  * Rendered inside <BrowserRouter> so it can read the current location. Keying
@@ -22,6 +23,7 @@ const AppShell: FC = () => {
         <Routes>
           <Route path="/rte" element={<RTEPage />} />
           <Route path="/requirements" element={<RequirementsPage />} />
+          <Route path="/workflow" element={<WorkflowPage />} />
           <Route path="/" element={<HomePage />} />
         </Routes>
       </main>
