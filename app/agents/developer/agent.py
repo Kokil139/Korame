@@ -66,17 +66,41 @@ class DeveloperAgent(BaseAgent):
             "When asked to implement one, respond with only a Python code block."
         )
 
-    async def create_todo_list(self, story_title: str, story: str) -> TodoList:
+    def start_run(self, story_title: str) -> TodoList:
         """
-        Break a finalized user story into an ordered todo list of implementation tasks.
+        Create an empty todo list "shell" immediately - no LLM call - so a
+        caller gets a todo_list_id to start polling right away, before the
+        story has even been broken into tasks yet. Call populate_todo_list()
+        next to actually do that.
 
         Args:
             story_title: Human-readable title for the story
-            story: The finalized user story text (with acceptance criteria)
 
         Returns:
-            The created TodoList (already registered in the shared TodoStore)
+            The new TodoList (already registered in the shared TodoStore, with no items yet)
         """
+        todo_list = TodoList(
+            id=str(uuid.uuid4()),
+            story_id=self._slugify(story_title),
+            story_title=story_title,
+        )
+        self.todo_store.create(todo_list)
+        return todo_list
+
+    async def populate_todo_list(self, todo_list: TodoList, story: str) -> None:
+        """
+        Break a finalized user story into an ordered list of implementation
+        tasks, populating `todo_list.items` in place (so anyone already
+        polling this todo list sees the tasks appear).
+
+        Args:
+            todo_list: A shell created via start_run()
+            story: The finalized user story text (with acceptance criteria)
+        """
+        todo_list.status = "planning"
+        todo_list.current_agent = "developer"
+        todo_list.current_activity = "Breaking the story into tasks"
+
         provider = self.model_router.default_provider
         prompt = (
             f"{self.prompt_template}\n\n"
@@ -89,19 +113,13 @@ class DeveloperAgent(BaseAgent):
         task_titles = [t.strip() for t in _NUMBERED_ITEM_PATTERN.findall(result) if t.strip()]
         if not task_titles:
             # Model didn't follow the format; fall back to a single task for the whole story.
-            task_titles = [story_title]
+            task_titles = [todo_list.story_title]
 
-        todo_list = TodoList(
-            id=str(uuid.uuid4()),
-            story_id=self._slugify(story_title),
-            story_title=story_title,
-            items=[
-                TodoItem(id=str(uuid.uuid4()), title=title, description=title)
-                for title in task_titles
-            ],
-        )
-        self.todo_store.create(todo_list)
-        return todo_list
+        todo_list.items = [
+            TodoItem(id=str(uuid.uuid4()), title=title, description=title)
+            for title in task_titles
+        ]
+        todo_list.status = "running"
 
     async def implement_item(self, story: str, item: TodoItem, test_feedback: Optional[str] = None) -> str:
         """
@@ -203,7 +221,8 @@ class DeveloperAgent(BaseAgent):
                     error="No story provided in task input",
                 )
 
-            todo_list = await self.create_todo_list(story_title, story)
+            todo_list = self.start_run(story_title)
+            await self.populate_todo_list(todo_list, story)
             return Response(
                 task_id=task.id,
                 agent_name=self.name,

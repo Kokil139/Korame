@@ -12,7 +12,7 @@ list up next.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 class TodoStatus(str, Enum):
@@ -47,6 +47,14 @@ class TodoList:
     story_title: str
     items: list[TodoItem] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
+    # Live run status, polled by the frontend to show the workflow in progress.
+    # One of: starting | planning | running | complete | failed | error
+    status: str = "starting"
+    current_agent: Optional[str] = None  # "rte" | "developer" | "testing" | None
+    current_activity: str = "Preparing to analyze the story"
+    pull_request: Optional[dict[str, Any]] = None
+    report: str = ""
+    error: Optional[str] = None
 
     def is_complete(self) -> bool:
         """True once every item has passed testing."""

@@ -7,7 +7,7 @@ all todo items pass, opens a pull request.
 """
 
 from typing import Any, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1", tags=["development"])
@@ -38,19 +38,23 @@ class DevelopRequest(BaseModel):
 
 
 @router.post("/develop")
-async def develop(request: DevelopRequest) -> dict[str, Any]:
+async def develop(request: DevelopRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
     """
-    Run the Developer <-> Testing loop for a user story, then open a PR.
+    Start the Developer <-> Testing loop for a user story and return immediately.
+
+    The loop (implement -> test -> retry -> ... -> pull request) runs as a
+    background task; poll GET /api/v1/todos/{todo_list_id} to watch progress
+    (which agent is active, per-task status, and the final report/PR).
 
     Args:
         request: Either `story` directly, or `conversation_id` to pull the
             RTE agent's finalized story from an existing conversation.
 
     Returns:
-        Todo list status per task and, if all tasks passed, the pull request result.
+        The new todo_list_id to poll, plus its initial status.
 
     Raises:
-        HTTPException: If neither story source is usable, or execution fails.
+        HTTPException: If neither story source is usable, or agents aren't ready.
     """
     if not _workflow_engine:
         raise HTTPException(status_code=500, detail="Workflow engine not initialized")
@@ -68,16 +72,26 @@ async def develop(request: DevelopRequest) -> dict[str, Any]:
     if not story:
         raise HTTPException(status_code=400, detail="Provide either 'story' or 'conversation_id'")
 
-    try:
-        return await _workflow_engine.execute_development_cycle(
-            story_title=request.story_title,
-            story=story,
-            max_attempts_per_item=request.max_attempts_per_item,
-            conversation_id=request.conversation_id,
-            conversation_memory=_conversation_memory,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    developer = _workflow_engine.registry.get_agent("developer")
+    if not developer:
+        raise HTTPException(status_code=500, detail="Developer agent not registered")
+
+    todo_list = developer.start_run(request.story_title)
+
+    background_tasks.add_task(
+        _workflow_engine.execute_development_cycle,
+        todo_list=todo_list,
+        story=story,
+        max_attempts_per_item=request.max_attempts_per_item,
+        conversation_id=request.conversation_id,
+        conversation_memory=_conversation_memory,
+    )
+
+    return {
+        "todo_list_id": todo_list.id,
+        "story_title": todo_list.story_title,
+        "status": todo_list.status,
+    }
 
 
 @router.get("/todos/{todo_list_id}")
@@ -105,6 +119,9 @@ async def get_todo_list(todo_list_id: str) -> dict[str, Any]:
     return {
         "todo_list_id": todo_list.id,
         "story_title": todo_list.story_title,
+        "status": todo_list.status,
+        "current_agent": todo_list.current_agent,
+        "current_activity": todo_list.current_activity,
         "items": [
             {
                 "id": item.id,
@@ -115,4 +132,7 @@ async def get_todo_list(todo_list_id: str) -> dict[str, Any]:
             for item in todo_list.items
         ],
         "all_complete": todo_list.is_complete(),
+        "pull_request": todo_list.pull_request,
+        "report": todo_list.report,
+        "error": todo_list.error,
     }

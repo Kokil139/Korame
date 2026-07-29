@@ -144,14 +144,20 @@ class WorkflowEngine:
 
     async def execute_development_cycle(
         self,
-        story_title: str,
+        todo_list: Any,
         story: str,
         max_attempts_per_item: int = 3,
         conversation_id: Optional[str] = None,
         conversation_memory: Optional[Any] = None,
     ) -> dict[str, Any]:
         """
-        Run the full Developer <-> Testing loop for a single finalized user story:
+        Run the full Developer <-> Testing loop for a single finalized user story.
+        Intended to run as a background task: `todo_list` is a shell already
+        created (and registered in the shared TodoStore) via
+        `DeveloperAgent.start_run()`, so the caller already has a
+        `todo_list.id` to poll before this method does anything. Every step
+        below updates `todo_list.status` / `current_agent` / `current_activity`
+        in place so a GET /api/v1/todos/{id} poll sees live progress:
 
         1. Developer Agent breaks the story into an ordered todo list.
         2. For each todo item (one after another):
@@ -170,7 +176,7 @@ class WorkflowEngine:
            it the next time they open that chat.
 
         Args:
-            story_title: Human-readable title for the story
+            todo_list: A shell TodoList from DeveloperAgent.start_run()
             story: The finalized user story text (with acceptance criteria)
             max_attempts_per_item: Max implement/test retries per todo item
             conversation_id: The RTE conversation this story came from, so the
@@ -186,62 +192,89 @@ class WorkflowEngine:
         developer = self.registry.get_agent("developer")
         tester = self.registry.get_agent("testing")
         if not developer or not tester:
-            return {"status": "error", "error": "Developer/Testing agents not registered"}
+            todo_list.status = "error"
+            todo_list.error = "Developer/Testing agents not registered"
+            return {"status": "error", "error": todo_list.error}
 
-        todo_list = await developer.create_todo_list(story_title, story)
+        try:
+            await developer.populate_todo_list(todo_list, story)
 
-        for item in todo_list.items:
-            item.status = TodoStatus.IN_PROGRESS
-            test_feedback: Optional[str] = None
+            for item in todo_list.items:
+                item.status = TodoStatus.IN_PROGRESS
+                test_feedback: Optional[str] = None
 
-            for attempt in range(1, max_attempts_per_item + 1):
-                item.attempts = attempt
-                item.code = await developer.implement_item(story, item, test_feedback)
-                item.status = TodoStatus.TESTING
+                for attempt in range(1, max_attempts_per_item + 1):
+                    item.attempts = attempt
+                    todo_list.current_agent = "developer"
+                    todo_list.current_activity = (
+                        f"Implementing: {item.title}"
+                        if attempt == 1
+                        else f"Fixing: {item.title} (attempt {attempt})"
+                    )
+                    item.code = await developer.implement_item(story, item, test_feedback)
+                    item.status = TodoStatus.TESTING
 
-                test_result = await tester.run_tests(
-                    run_id=f"{todo_list.id}-{item.id}",
-                    task_title=item.title,
-                    code=item.code,
+                    todo_list.current_agent = "testing"
+                    todo_list.current_activity = f"Testing: {item.title}"
+                    test_result = await tester.run_tests(
+                        run_id=f"{todo_list.id}-{item.id}",
+                        task_title=item.title,
+                        code=item.code,
+                    )
+                    item.test_code = test_result["test_code"]
+                    item.test_output = test_result["output"]
+
+                    if test_result["passed"]:
+                        item.status = TodoStatus.COMPLETE
+                        break
+
+                    item.status = TodoStatus.FAILED
+                    test_feedback = test_result["output"]
+
+            pull_request = None
+            if todo_list.is_complete():
+                todo_list.current_agent = "developer"
+                todo_list.current_activity = "Opening pull request"
+                pull_request = await developer.create_pull_request(todo_list)
+                todo_list.pull_request = pull_request
+
+            todo_list.current_agent = "rte"
+            todo_list.current_activity = "Reporting results back to the business user"
+            report = self._build_development_report(todo_list, pull_request)
+            todo_list.report = report
+
+            # Report back to RTE: append the outcome to the original conversation
+            # so the business user sees it the next time they open that chat.
+            if conversation_id and conversation_memory:
+                conversation_memory.add_message(
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=report,
+                    agent_name="rte",
                 )
-                item.test_code = test_result["test_code"]
-                item.test_output = test_result["output"]
 
-                if test_result["passed"]:
-                    item.status = TodoStatus.COMPLETE
-                    break
+            todo_list.status = "complete" if todo_list.is_complete() else "failed"
+            todo_list.current_agent = None
+            todo_list.current_activity = "Done"
 
-                item.status = TodoStatus.FAILED
-                test_feedback = test_result["output"]
-
-        pull_request = None
-        if todo_list.is_complete():
-            pull_request = await developer.create_pull_request(todo_list)
-
-        report = self._build_development_report(todo_list, pull_request)
-
-        # Report back to RTE: append the outcome to the original conversation
-        # so the business user sees it the next time they open that chat.
-        if conversation_id and conversation_memory:
-            conversation_memory.add_message(
-                conversation_id=conversation_id,
-                role="assistant",
-                content=report,
-                agent_name="rte",
-            )
-
-        return {
-            "status": "success",
-            "todo_list_id": todo_list.id,
-            "story_title": todo_list.story_title,
-            "items": [
-                {"id": i.id, "title": i.title, "status": i.status.value, "attempts": i.attempts}
-                for i in todo_list.items
-            ],
-            "all_complete": todo_list.is_complete(),
-            "pull_request": pull_request,
-            "report": report,
-        }
+            return {
+                "status": "success",
+                "todo_list_id": todo_list.id,
+                "story_title": todo_list.story_title,
+                "items": [
+                    {"id": i.id, "title": i.title, "status": i.status.value, "attempts": i.attempts}
+                    for i in todo_list.items
+                ],
+                "all_complete": todo_list.is_complete(),
+                "pull_request": pull_request,
+                "report": report,
+            }
+        except Exception as e:
+            todo_list.status = "error"
+            todo_list.error = str(e)
+            todo_list.current_agent = None
+            todo_list.current_activity = f"Error: {e}"
+            return {"status": "error", "error": str(e)}
 
     @staticmethod
     def _build_development_report(todo_list: Any, pull_request: Optional[dict[str, Any]]) -> str:
