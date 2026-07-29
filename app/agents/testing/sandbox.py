@@ -66,12 +66,25 @@ class Sandbox:
             TestExecutionResult with pass/fail, combined output, and exit code
         """
         os.makedirs(self.path, exist_ok=True)
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, "-m", "pytest", ".", "-q",
-            cwd=self.path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "pytest", ".", "-q",
+                cwd=self.path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+        except NotImplementedError as e:
+            # Raised (with no message at all) when the active asyncio event
+            # loop doesn't support subprocess creation - the classic Windows
+            # Selector-vs-Proactor event loop gotcha. app/main.py sets the
+            # Proactor policy on Windows to prevent this; if it still happens,
+            # something else in the process is overriding that policy.
+            raise RuntimeError(
+                "Could not start the pytest subprocess: the current asyncio "
+                "event loop does not support subprocess creation (on Windows, "
+                "this means the Selector event loop is active instead of "
+                "Proactor)."
+            ) from e
         try:
             stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:

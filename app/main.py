@@ -4,6 +4,18 @@ Korame V1 - Main FastAPI Application.
 AI-native software factory with multi-agent orchestration.
 """
 
+import sys
+import asyncio
+
+if sys.platform == "win32":
+    # The Testing agent's sandbox runs pytest via asyncio.create_subprocess_exec().
+    # On Windows, that raises a bare NotImplementedError (no message at all) if
+    # the Selector event loop is active instead of Proactor - which is exactly
+    # what surfaced as an unexplained, empty "Error:" during the testing phase,
+    # with nothing useful in the logs either since the exception has no message.
+    # Set this as early as possible (before uvicorn creates the event loop).
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

@@ -11,6 +11,7 @@ from app.kernel.models import Task, Response, Context
 from app.kernel.registry import Registry
 from app.router.model_router import ModelRouter
 from app.knowledge.todos import TodoStatus
+from app.utils import logger
 
 
 class WorkflowEngine:
@@ -270,11 +271,18 @@ class WorkflowEngine:
                 "report": report,
             }
         except Exception as e:
+            # str(e) can be empty for some exceptions (e.g. a bare
+            # NotImplementedError) - fall back to the exception type name so
+            # the UI never shows a blank "Error:" with no information at all.
+            # Also log the full traceback, since nothing else writes this
+            # error to the application logs otherwise.
+            error_message = str(e) or type(e).__name__
+            logger.exception(f"Development workflow {todo_list.id} failed")
             todo_list.status = "error"
-            todo_list.error = str(e)
+            todo_list.error = error_message
             todo_list.current_agent = None
-            todo_list.current_activity = f"Error: {e}"
-            return {"status": "error", "error": str(e)}
+            todo_list.current_activity = f"Error: {error_message}"
+            return {"status": "error", "error": error_message}
 
     @staticmethod
     def _build_development_report(todo_list: Any, pull_request: Optional[dict[str, Any]]) -> str:
