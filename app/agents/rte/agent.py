@@ -268,11 +268,20 @@ Generate a well-structured user story based on this input."""
             # Get the provider from the router
             provider = self.model_router.route(task)
 
-            # Call the model
+            # Call the model. Unlike the Developer/Testing agents' structural,
+            # format-bound calls (numbered lists, code blocks - hurt more than
+            # helped by a model "thinking" through a tight token budget), RTE
+            # judges ambiguity, decides how many clarifying questions are
+            # genuinely needed, and now also judges revision-vs-new-requirement
+            # - real deliberation that benefits from thinking. It also already
+            # has a generous 2000-token budget and was confirmed working well
+            # before the Developer-side truncation issue was ever found, so
+            # there's no evidence it needs thinking disabled too.
             result = await provider.call(
                 prompt,
                 temperature=0.7,
-                max_tokens=2000
+                max_tokens=2000,
+                think=True,
             )
 
             needs_clarification, questions, suggestions, content = self._parse_response(result)

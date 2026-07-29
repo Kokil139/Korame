@@ -147,7 +147,7 @@ class WorkflowEngine:
         self,
         todo_list: Any,
         story: str,
-        max_attempts_per_item: int = 3,
+        max_attempts_per_item: int = 5,
         conversation_id: Optional[str] = None,
         conversation_memory: Optional[Any] = None,
     ) -> dict[str, Any]:
@@ -232,6 +232,18 @@ class WorkflowEngine:
                     item.status = TodoStatus.FAILED
                     test_feedback = test_result["output"]
 
+                if item.status != TodoStatus.COMPLETE:
+                    # Tasks are sequential and later ones may depend on this
+                    # one - don't burn more time/GPU attempting further tasks
+                    # on top of one that's still broken. Stop here and report
+                    # clearly which task is blocked, instead of silently
+                    # moving on and ending up with a partial, untested set of
+                    # "completed" tasks around a gap.
+                    todo_list.current_activity = (
+                        f"Blocked on: {item.title} (still failing after {item.attempts} attempt(s))"
+                    )
+                    break
+
             pull_request = None
             if todo_list.is_complete():
                 todo_list.current_agent = "developer"
@@ -288,9 +300,17 @@ class WorkflowEngine:
     def _build_development_report(todo_list: Any, pull_request: Optional[dict[str, Any]]) -> str:
         """Build the human-readable status update posted back to the RTE conversation."""
         lines = [f"**Development update: {todo_list.story_title}**", ""]
+        icons = {
+            TodoStatus.COMPLETE: "\u2705",
+            TodoStatus.FAILED: "\u26a0\ufe0f",
+            TodoStatus.PENDING: "\u26aa",
+        }
         for item in todo_list.items:
-            icon = "\u2705" if item.status == TodoStatus.COMPLETE else "\u26a0\ufe0f"
-            lines.append(f"{icon} {item.title} — {item.status.value} ({item.attempts} attempt(s))")
+            icon = icons.get(item.status, "\u26a0\ufe0f")
+            if item.status == TodoStatus.PENDING:
+                lines.append(f"{icon} {item.title} — not started (blocked by an earlier task)")
+            else:
+                lines.append(f"{icon} {item.title} — {item.status.value} ({item.attempts} attempt(s))")
 
         lines.append("")
         if todo_list.is_complete():
@@ -302,7 +322,14 @@ class WorkflowEngine:
                     f"{pull_request.get('reason', 'unknown reason')}"
                 )
         else:
-            lines.append("Not all tasks passed testing yet - see the statuses above.")
+            stuck = next((i for i in todo_list.items if i.status == TodoStatus.FAILED), None)
+            if stuck:
+                lines.append(
+                    f'Stopped: "{stuck.title}" still failed testing after {stuck.attempts} attempt(s). '
+                    "Latest test output:\n```\n" + (stuck.test_output or "")[-1500:] + "\n```"
+                )
+            else:
+                lines.append("Not all tasks passed testing yet - see the statuses above.")
 
         return "\n".join(lines)
 

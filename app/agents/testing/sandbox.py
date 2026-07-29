@@ -76,7 +76,7 @@ class Sandbox:
 
         def _run() -> subprocess.CompletedProcess:
             return subprocess.run(
-                [sys.executable, "-m", "pytest", ".", "-q"],
+                [sys.executable, "-m", "pytest", ".", "-q", "--tb=short"],
                 cwd=self.path,
                 capture_output=True,
                 text=True,

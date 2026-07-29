@@ -67,7 +67,7 @@ class TestingAgent(BaseAgent):
             "(or `from implementation import ...`) and verify the task is correctly "
             "implemented. Respond with ONLY the test code in a fenced Python code block."
         )
-        result = await provider.call(prompt, temperature=0.3, max_tokens=1200)
+        result = await provider.call(prompt, temperature=0.3, max_tokens=1500)
         return self._extract_code(result)
 
     async def run_tests(self, run_id: str, task_title: str, code: str) -> dict[str, Any]:

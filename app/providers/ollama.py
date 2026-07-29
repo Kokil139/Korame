@@ -55,6 +55,14 @@ class OllamaProvider(Provider):
             "prompt": prompt,
             # Non-streaming mode for simplicity
             "stream": False,
+            # Hybrid reasoning models (notably Qwen3) can spend a large chunk
+            # of num_predict on a <think>...</think> block before actually
+            # answering, leaving too little budget left for the real
+            # response - this is what was producing truncated ("half-cooked")
+            # code from the Developer agent. Ollama lets compatible models
+            # skip that step per-request; older Ollama versions simply
+            # ignore this unknown field. Overridable via the `think` kwarg.
+            "think": kwargs.get("think", False),
             # Generation params belong under "options" for Ollama's /api/generate
             # endpoint. Passing them as top-level fields (as before) is silently
             # ignored by Ollama, so temperature/output length were never

@@ -143,7 +143,10 @@ class DeveloperAgent(BaseAgent):
             feedback_section = (
                 f"\n\n## Your Previous Attempt Failed Testing\n"
                 f"Test output:\n{test_feedback}\n\n"
-                "Fix the implementation to address this failure."
+                "Read the failure above carefully: identify the specific assertion "
+                "or error, understand why it happened, and make a targeted fix. "
+                "Do not rewrite the whole module from scratch unless the failure "
+                "shows the entire approach was wrong."
             )
 
         prompt = (
@@ -151,11 +154,12 @@ class DeveloperAgent(BaseAgent):
             f"## User Story\n{story}\n\n"
             f"## Task To Implement\n{item.title}\n"
             f"{feedback_section}\n\n"
-            "Write a single Python module (to be saved as implementation.py) that "
-            "implements this task. Respond with ONLY the code in a fenced Python "
+            "Write a single, COMPLETE Python module (to be saved as implementation.py) "
+            "that fully implements this task - do not truncate output or leave "
+            "placeholders/TODOs. Respond with ONLY the code in a fenced Python "
             "code block - no explanation."
         )
-        result = await provider.call(prompt, temperature=0.3, max_tokens=1500)
+        result = await provider.call(prompt, temperature=0.3, max_tokens=3000)
         return self._extract_code(result)
 
     async def create_pull_request(self, todo_list: TodoList) -> dict[str, Any]:
