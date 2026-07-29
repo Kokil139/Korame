@@ -8,6 +8,10 @@ export interface WorkflowTodoItem {
   title: string;
   status: TodoItemStatus;
   attempts: number;
+  /** Latest generated implementation, if any attempt has run yet. */
+  code?: string;
+  /** Latest pytest output (pass or fail) for this task, if tested yet. */
+  test_output?: string;
 }
 
 /** Result of an attempted GitHub pull request creation. */

@@ -128,6 +128,10 @@ async def get_todo_list(todo_list_id: str) -> dict[str, Any]:
                 "title": item.title,
                 "status": item.status.value,
                 "attempts": item.attempts,
+                # Exposed so a stuck/failing task can be diagnosed from the
+                # API response directly, without needing backend log access.
+                "code": item.code,
+                "test_output": item.test_output,
             }
             for item in todo_list.items
         ],
