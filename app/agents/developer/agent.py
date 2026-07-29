@@ -24,6 +24,9 @@ from app.knowledge.todos import TodoStore, TodoList, TodoItem
 
 _NUMBERED_ITEM_PATTERN = re.compile(r"^[ \t]*\d+[\.\)][ \t]*(.+)$", re.MULTILINE)
 _CODE_BLOCK_PATTERN = re.compile(r"```(?:python)?\s*(.*?)```", re.DOTALL)
+# Defensively strips a redundant "Title:"/"Task:"/"Step:" label some models
+# prepend to a task line despite being told not to (see prompts/developer.md).
+_LABEL_PREFIX_PATTERN = re.compile(r"^(?:title|task|step)\s*:\s*", re.IGNORECASE)
 
 
 class DeveloperAgent(BaseAgent):
@@ -109,8 +112,9 @@ class DeveloperAgent(BaseAgent):
             "implementable engineering tasks, ordered so earlier tasks don't "
             "depend on later ones. Respond with the numbered list only."
         )
-        result = await provider.call(prompt, temperature=0.4, max_tokens=800)
+        result = await provider.call(prompt, temperature=0.4, max_tokens=1200)
         task_titles = [t.strip() for t in _NUMBERED_ITEM_PATTERN.findall(result) if t.strip()]
+        task_titles = [_LABEL_PREFIX_PATTERN.sub("", t).strip() or t for t in task_titles]
         if not task_titles:
             # Model didn't follow the format; fall back to a single task for the whole story.
             task_titles = [todo_list.story_title]

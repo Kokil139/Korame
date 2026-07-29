@@ -6,9 +6,15 @@ and cleaned up after each run. It must live outside the repo: when running the
 server with `uvicorn --reload`, its file watcher would otherwise pick up every
 generated implementation.py as a source change and restart the whole app -
 wiping the in-memory TodoStore mid-workflow and turning every subsequent
-GET /api/v1/todos/{id} poll into a 404. pytest executes as a subprocess with a
-timeout, using the SAME Python interpreter running the server (so it shares
-the same environment/dependencies).
+GET /api/v1/todos/{id} poll into a 404. pytest runs as a plain, synchronous
+`subprocess.run()` call inside a worker thread (via asyncio.to_thread) rather
+than asyncio.create_subprocess_exec() - the latter requires the Proactor
+event loop on Windows and raises a bare NotImplementedError if a Selector
+loop is active instead, which some ASGI server setups end up using
+regardless of the event loop policy set at process startup. Running a
+normal blocking subprocess in a thread sidesteps that entirely, using the
+SAME Python interpreter running the server (so it shares the same
+environment/dependencies).
 
 Security note: this executes LLM-generated code. It is isolated to a
 dedicated, per-run temp folder and bounded by a timeout, but this is
@@ -20,6 +26,7 @@ environment instead.
 import asyncio
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -66,37 +73,29 @@ class Sandbox:
             TestExecutionResult with pass/fail, combined output, and exit code
         """
         os.makedirs(self.path, exist_ok=True)
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "pytest", ".", "-q",
+
+        def _run() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                [sys.executable, "-m", "pytest", ".", "-q"],
                 cwd=self.path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
             )
-        except NotImplementedError as e:
-            # Raised (with no message at all) when the active asyncio event
-            # loop doesn't support subprocess creation - the classic Windows
-            # Selector-vs-Proactor event loop gotcha. app/main.py sets the
-            # Proactor policy on Windows to prevent this; if it still happens,
-            # something else in the process is overriding that policy.
-            raise RuntimeError(
-                "Could not start the pytest subprocess: the current asyncio "
-                "event loop does not support subprocess creation (on Windows, "
-                "this means the Selector event loop is active instead of "
-                "Proactor)."
-            ) from e
+
         try:
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.wait()
+            # subprocess.run(timeout=...) kills the process for us on timeout,
+            # unlike asyncio's subprocess transport which needed manual
+            # proc.kill()/proc.wait() - this is simpler as well as more portable.
+            result = await asyncio.to_thread(_run)
+        except subprocess.TimeoutExpired:
             return TestExecutionResult(passed=False, output="Test execution timed out", returncode=-1)
 
-        output = stdout.decode("utf-8", errors="replace")
+        output = (result.stdout or "") + (result.stderr or "")
         return TestExecutionResult(
-            passed=proc.returncode == 0,
+            passed=result.returncode == 0,
             output=output,
-            returncode=proc.returncode if proc.returncode is not None else -1,
+            returncode=result.returncode if result.returncode is not None else -1,
         )
 
     def cleanup(self) -> None:
