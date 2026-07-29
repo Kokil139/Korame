@@ -8,7 +8,6 @@ import ChatWindow from "../components/chat/ChatWindow";
 import ChatInput from "../components/chat/ChatInput";
 import ConversationSidebar from "../components/chat/ConversationSidebar";
 import ErrorAlert from "../components/common/ErrorAlert";
-import type { ChatMessage } from "../types/chat";
 
 /** Last-resort title when the story text doesn't mention "user story title" at all. */
 function firstLineFallback(content: string): string {
@@ -67,12 +66,12 @@ const RTEPage: FC = () => {
     startNewConversation();
   };
 
-  const handleSendToDevelopment = async (message: ChatMessage) => {
-    const storyTitle = extractStoryTitle(message.content) || firstLineFallback(message.content);
+  const handleSendToDevelopment = async (storyContent: string) => {
+    const storyTitle = extractStoryTitle(storyContent) || firstLineFallback(storyContent);
 
     await startDevelopmentWorkflow({
       storyTitle,
-      story: message.content,
+      story: storyContent,
       conversationId: conversationId ?? undefined,
     });
 

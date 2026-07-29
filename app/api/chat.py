@@ -29,6 +29,10 @@ class ChatResponse(BaseModel):
     needs_clarification: bool = False
     questions: list[str] = []
     suggestions: list[str] = []
+    # Usually a single-element list (one story). Populated when RTE decides a
+    # requirement genuinely needs multiple independent stories - each element
+    # is one story's full Format-B text, in the order RTE produced them.
+    stories: list[str] = []
     error: Optional[str] = None
 
 
@@ -125,6 +129,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             needs_clarification = response.data.get("needs_clarification", False)
             questions = response.data.get("questions", [])
             suggestions = response.data.get("suggestions", [])
+            stories = response.data.get("stories", [])
             _conversation_memory.add_message(
                 conversation_id=conversation_id,
                 role="assistant",
@@ -141,7 +146,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 user_story=user_story,
                 needs_clarification=needs_clarification,
                 questions=questions,
-                suggestions=suggestions
+                suggestions=suggestions,
+                stories=stories
             )
         else:
             error_msg = response.error or "Unknown error"

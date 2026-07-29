@@ -9,7 +9,7 @@ import { theme } from "../../theme/theme";
 interface ChatWindowProps {
   messages: ChatMessageType[];
   isLoading: boolean;
-  onSendToDevelopment?: (message: ChatMessageType) => void;
+  onSendToDevelopment?: (storyContent: string) => void | Promise<void>;
 }
 
 /** Scrollable conversation area; auto-scrolls to the newest message. */

@@ -32,6 +32,9 @@ class TodoItem:
     description: str = ""
     status: TodoStatus = TodoStatus.PENDING
     code: str = ""
+    # "python" (default) or "html" - detected from the generated code so the
+    # Testing Agent knows whether to `import` it or check it as a page.
+    file_type: str = "python"
     test_code: str = ""
     test_output: str = ""
     attempts: int = 0

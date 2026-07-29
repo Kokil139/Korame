@@ -12,6 +12,8 @@ export interface ChatMessage {
   questions?: string[];
   /** Suggestions the agent surfaced from similar past requirements in the knowledge base. */
   suggestions?: string[];
+  /** Individual story blocks when RTE split a requirement into multiple independent stories (usually just one, or absent). */
+  stories?: string[];
   /** True when this message represents a client/server error rather than agent output. */
   isError?: boolean;
 }
@@ -26,6 +28,7 @@ export interface ChatApiResponse {
   needs_clarification?: boolean;
   questions?: string[];
   suggestions?: string[];
+  stories?: string[];
   error?: string;
 }
 

@@ -23,10 +23,11 @@ from app.router.model_router import ModelRouter
 from app.knowledge.todos import TodoStore, TodoList, TodoItem
 
 _NUMBERED_ITEM_PATTERN = re.compile(r"^[ \t]*\d+[\.\)][ \t]*(.+)$", re.MULTILINE)
-_CODE_BLOCK_PATTERN = re.compile(r"```(?:python)?\s*(.*?)```", re.DOTALL)
+_CODE_BLOCK_PATTERN = re.compile(r"```(?:python|html)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 # Defensively strips a redundant "Title:"/"Task:"/"Step:" label some models
 # prepend to a task line despite being told not to (see prompts/developer.md).
 _LABEL_PREFIX_PATTERN = re.compile(r"^(?:title|task|step)\s*:\s*", re.IGNORECASE)
+_HTML_SIGNATURE_PATTERN = re.compile(r"<!DOCTYPE\s+html|<html[\s>]", re.IGNORECASE)
 
 
 class DeveloperAgent(BaseAgent):
@@ -108,9 +109,13 @@ class DeveloperAgent(BaseAgent):
         prompt = (
             f"{self.prompt_template}\n\n"
             f"## User Story\n{story}\n\n"
-            "Break this story into a numbered list of small, independently "
-            "implementable engineering tasks, ordered so earlier tasks don't "
-            "depend on later ones. Respond with the numbered list only."
+            "First decide whether this story is simple enough to implement as ONE "
+            "cohesive task, or whether it genuinely contains multiple independent, "
+            "separable pieces of work. Most stories should be ONE task - do not "
+            "invent artificial steps just to produce a longer list. Respond with a "
+            "numbered list (one item if simple, more only if genuinely warranted), "
+            "ordered so earlier tasks don't depend on later ones. Respond with the "
+            "numbered list only."
         )
         result = await provider.call(prompt, temperature=0.4, max_tokens=1200)
         task_titles = [t.strip() for t in _NUMBERED_ITEM_PATTERN.findall(result) if t.strip()]
@@ -154,10 +159,12 @@ class DeveloperAgent(BaseAgent):
             f"## User Story\n{story}\n\n"
             f"## Task To Implement\n{item.title}\n"
             f"{feedback_section}\n\n"
-            "Write a single, COMPLETE Python module (to be saved as implementation.py) "
-            "that fully implements this task - do not truncate output or leave "
-            "placeholders/TODOs. Respond with ONLY the code in a fenced Python "
-            "code block - no explanation."
+            "Write a single, COMPLETE implementation that fully implements this "
+            "task - a Python module for backend/logic work, or a self-contained "
+            "HTML page for a frontend/UI task (see the format rules above). Do "
+            "not truncate output or leave placeholders/TODOs. Respond with ONLY "
+            "the code in ONE fenced code block using the correct language tag - "
+            "no explanation."
         )
         result = await provider.call(prompt, temperature=0.3, max_tokens=3000)
         return self._extract_code(result)
@@ -179,7 +186,8 @@ class DeveloperAgent(BaseAgent):
             }
 
         files = {
-            f"generated/{todo_list.story_id}/{self._slugify(item.title)}.py": item.code
+            f"generated/{todo_list.story_id}/{self._slugify(item.title)}"
+            f"{'.html' if item.file_type == 'html' else '.py'}": item.code
             for item in todo_list.items
             if item.code
         }
@@ -201,9 +209,24 @@ class DeveloperAgent(BaseAgent):
 
     @staticmethod
     def _extract_code(text: str) -> str:
-        """Pull the code out of a fenced ```python ...``` block, if present."""
+        """Pull the code out of a fenced ```python/```html ...``` block, if present."""
         match = _CODE_BLOCK_PATTERN.search(text)
         return match.group(1).strip() if match else text.strip()
+
+    @staticmethod
+    def detect_file_type(code: str) -> str:
+        """
+        Detect whether generated code is a standalone HTML page or a Python
+        module, so the Testing Agent can test it appropriately: an HTML page
+        can't be `import`-ed like a Python module, so it needs a different
+        testing strategy (structural assertions on the file's text/markup).
+
+        Only checks the start of the content (not a full-text search) so a
+        Python file that merely returns/contains an HTML string somewhere in
+        its body (e.g. a Flask view) isn't mistaken for a standalone HTML page.
+        """
+        head = code.lstrip()[:200]
+        return "html" if _HTML_SIGNATURE_PATTERN.search(head) else "python"
 
     @staticmethod
     def _slugify(text: str) -> str:

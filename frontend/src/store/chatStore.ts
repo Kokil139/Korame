@@ -124,6 +124,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         needsClarification: data.needs_clarification,
         questions: data.questions,
         suggestions: data.suggestions,
+        stories: data.stories,
       };
 
       set((state) => {

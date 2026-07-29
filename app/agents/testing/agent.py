@@ -14,7 +14,7 @@ from app.kernel.models import Task, Response
 from app.router.model_router import ModelRouter
 from app.agents.testing.sandbox import Sandbox
 
-_CODE_BLOCK_PATTERN = re.compile(r"```(?:python)?\s*(.*?)```", re.DOTALL)
+_CODE_BLOCK_PATTERN = re.compile(r"```(?:python)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
 class TestingAgent(BaseAgent):
@@ -47,30 +47,54 @@ class TestingAgent(BaseAgent):
             "only a Python code block."
         )
 
-    async def generate_tests(self, task_title: str, code: str) -> str:
+    async def generate_tests(self, task_title: str, code: str, file_type: str = "python") -> str:
         """
         Ask the model to write pytest tests for the given implementation.
 
         Args:
             task_title: Description of the task the code should satisfy
             code: The implementation to test
+            file_type: "python" (default) or "html" - an HTML page can't be
+                `import`-ed like a module, so it needs a different testing
+                strategy (structural assertions on the file's raw text).
 
         Returns:
             Generated pytest test source code
         """
         provider = self.model_router.default_provider
+        if file_type == "html":
+            implementation_section = (
+                f"## Implementation (saved as implementation.html)\n```html\n{code}\n```\n\n"
+            )
+            strategy = (
+                "This implementation is a standalone HTML page, not a Python module - "
+                "it cannot be imported. Write pytest test cases in a single file that "
+                "open() and read implementation.html as plain text (optionally using "
+                "the standard library's html.parser), then assert on the specific "
+                "structure/content the task requires. Do not try to import the HTML "
+                "file, and do not use a browser, Selenium, or any package outside the "
+                "Python standard library."
+            )
+        else:
+            implementation_section = (
+                f"## Implementation (saved as implementation.py)\n```python\n{code}\n```\n\n"
+            )
+            strategy = (
+                "Write pytest test cases in a single file that `import implementation` "
+                "(or `from implementation import ...`) and verify the task is correctly "
+                "implemented."
+            )
+
         prompt = (
             f"{self.prompt_template}\n\n"
             f"## Task\n{task_title}\n\n"
-            f"## Implementation (saved as implementation.py)\n```python\n{code}\n```\n\n"
-            "Write pytest test cases in a single file that `import implementation` "
-            "(or `from implementation import ...`) and verify the task is correctly "
-            "implemented. Respond with ONLY the test code in a fenced Python code block."
+            f"{implementation_section}"
+            f"{strategy} Respond with ONLY the test code in a fenced Python code block."
         )
         result = await provider.call(prompt, temperature=0.3, max_tokens=1500)
         return self._extract_code(result)
 
-    async def run_tests(self, run_id: str, task_title: str, code: str) -> dict[str, Any]:
+    async def run_tests(self, run_id: str, task_title: str, code: str, file_type: str = "python") -> dict[str, Any]:
         """
         Write the implementation and generated tests into an isolated sandbox and
         actually execute pytest against them.
@@ -79,14 +103,17 @@ class TestingAgent(BaseAgent):
             run_id: Unique ID for this test run (used as the sandbox folder name)
             task_title: Description of the task the code should satisfy
             code: The implementation to test
+            file_type: "python" (default) or "html" - determines the saved
+                implementation file's extension and the testing strategy used
 
         Returns:
             Dict with `passed`, `output` (pytest output), and `test_code` (what was run)
         """
         sandbox = Sandbox(run_id)
         try:
-            sandbox.write_file("implementation.py", code)
-            test_code = await self.generate_tests(task_title, code)
+            impl_filename = "implementation.html" if file_type == "html" else "implementation.py"
+            sandbox.write_file(impl_filename, code)
+            test_code = await self.generate_tests(task_title, code, file_type)
             sandbox.write_file("test_implementation.py", test_code)
             result = await sandbox.run_pytest()
             return {"passed": result.passed, "output": result.output, "test_code": test_code}
@@ -108,6 +135,7 @@ class TestingAgent(BaseAgent):
             task_title = task.input_data.get("task_title", "")
             code = task.input_data.get("code", "")
             run_id = task.input_data.get("run_id", task.id)
+            file_type = task.input_data.get("file_type", "python")
             if not code:
                 return Response(
                     task_id=task.id,
@@ -117,7 +145,7 @@ class TestingAgent(BaseAgent):
                     error="No code provided to test",
                 )
 
-            result = await self.run_tests(run_id, task_title, code)
+            result = await self.run_tests(run_id, task_title, code, file_type)
             return Response(
                 task_id=task.id,
                 agent_name=self.name,

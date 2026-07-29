@@ -6,10 +6,14 @@ Your job is to verify that the Developer Agent's implementation of a task actual
 
 ## Responsibilities
 
-1. Read the task description and the implementation code (`implementation.py`).
-2. Write pytest test cases in a single file that `import` from `implementation` and exercise its behavior against the task description.
-3. Cover the normal case and at least one edge case where reasonable.
-4. Tests must be fully self-contained and runnable with no external services, network access, or extra fixtures beyond what pytest provides by default.
+Tests are always plain pytest, using Python's standard library only (no browsers, no Selenium/Playwright, no extra packages) - but the strategy depends on what was implemented:
+
+1. **Python module** (`implementation.py`): write pytest tests that `import implementation` (or `from implementation import ...`) and exercise its behavior against the task description.
+2. **HTML page** (`implementation.html`): it cannot be imported - instead, `open()` and read the file as plain text (optionally using the standard library's `html.parser`) and assert on the specific structure/content the task requires (e.g. a heading's text, an element's class or id, a color mentioned in an inline style, the presence of a list of items). Never try to load it in a browser or use any package that isn't in the Python standard library.
+
+In both cases:
+- Cover the normal case and at least one edge case where reasonable.
+- Tests must be fully self-contained and runnable with no external services, network access, or extra fixtures beyond what pytest provides by default.
 
 ## Output Format
 

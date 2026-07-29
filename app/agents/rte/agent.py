@@ -209,7 +209,7 @@ Generate a well-structured user story based on this input."""
 
         return needs_clarification, questions, suggestions, content
 
-    def _store_finalized_story(self, requirement: str, content: str, conversation_id: str, task_id: str) -> None:
+    def _store_finalized_story(self, requirement: str, content: str, conversation_id: str, artifact_id: str) -> None:
         """
         Persist a finalized user story into the knowledge fabric so future
         requirements can find it as a "similar past requirement". Best-effort:
@@ -222,7 +222,7 @@ Generate a well-structured user story based on this input."""
 
         try:
             self.knowledge_fabric.create_artifact(
-                artifact_id=task_id,
+                artifact_id=artifact_id,
                 artifact_type="user_story",
                 title=title,
                 description=requirement,
@@ -232,6 +232,17 @@ Generate a well-structured user story based on this input."""
             )
         except Exception:
             pass
+
+    @staticmethod
+    def _split_stories(content: str) -> list[str]:
+        """
+        Split a Format-B reply into individual story blocks. Most replies are
+        a single story (returned as a one-element list); when RTE decides a
+        requirement needs multiple independent stories, they're separated by
+        a line containing only "---".
+        """
+        parts = _STORY_SEPARATOR_PATTERN.split(content)
+        return [p.strip() for p in parts if p.strip()]
 
     async def execute(self, task: Task) -> Response:
         """
@@ -273,22 +284,27 @@ Generate a well-structured user story based on this input."""
             # helped by a model "thinking" through a tight token budget), RTE
             # judges ambiguity, decides how many clarifying questions are
             # genuinely needed, and now also judges revision-vs-new-requirement
-            # - real deliberation that benefits from thinking. It also already
-            # has a generous 2000-token budget and was confirmed working well
-            # before the Developer-side truncation issue was ever found, so
-            # there's no evidence it needs thinking disabled too.
+            # and single-vs-multiple-story splits - real deliberation that
+            # benefits from thinking. It also has a generous 3000-token budget
+            # (raised from 2000 to leave room for multi-story replies) and was
+            # confirmed working well before the Developer-side truncation
+            # issue was ever found, so there's no evidence it needs thinking
+            # disabled too.
             result = await provider.call(
                 prompt,
                 temperature=0.7,
-                max_tokens=2000,
+                max_tokens=3000,
                 think=True,
             )
 
             needs_clarification, questions, suggestions, content = self._parse_response(result)
 
-            # Once a story is finalized, store it so it can inform future requirements
-            if not needs_clarification:
-                self._store_finalized_story(requirement, content, conversation_id, task.id)
+            # Once a story is finalized, split out and store each one (usually
+            # just one) so it/they can inform future requirements.
+            stories = self._split_stories(content) if not needs_clarification else []
+            for i, story_content in enumerate(stories):
+                artifact_id = task.id if len(stories) == 1 else f"{task.id}-{i}"
+                self._store_finalized_story(requirement, story_content, conversation_id, artifact_id)
 
             return Response(
                 task_id=task.id,
@@ -299,6 +315,7 @@ Generate a well-structured user story based on this input."""
                     "needs_clarification": needs_clarification,
                     "questions": questions,
                     "suggestions": suggestions,
+                    "stories": stories,
                 }
             )
 

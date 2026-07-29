@@ -6,17 +6,49 @@ import { theme } from "../../theme/theme";
 
 interface ChatMessageProps {
   message: ChatMessageType;
-  /** Shown as a button on finalized (non-clarification) assistant messages. */
-  onSendToDevelopment?: (message: ChatMessageType) => void | Promise<void>;
+  /** Shown as a button on each finalized story block; receives that story's own text. */
+  onSendToDevelopment?: (storyContent: string) => void | Promise<void>;
 }
+
+interface SendToDevelopmentButtonProps {
+  storyContent: string;
+  onSend: (storyContent: string) => void | Promise<void>;
+}
+
+/** Its own isSending state per instance, so sending one story in a multi-story reply doesn't disable the others. */
+const SendToDevelopmentButton: FC<SendToDevelopmentButtonProps> = ({ storyContent, onSend }) => {
+  const [isSending, setIsSending] = useState(false);
+
+  return (
+    <button
+      type="button"
+      className="korame-btn korame-btn-primary"
+      style={{ fontSize: 12, padding: "6px 12px" }}
+      disabled={isSending}
+      onClick={async () => {
+        if (isSending) return;
+        setIsSending(true);
+        try {
+          await onSend(storyContent);
+        } finally {
+          setIsSending(false);
+        }
+      }}
+    >
+      {isSending ? "Starting..." : "Send to Development \u2192"}
+    </button>
+  );
+};
 
 /** Renders a single chat bubble, styled differently for user/assistant/clarification/error messages. */
 const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment }) => {
-  const [isSending, setIsSending] = useState(false);
   const isUser = message.role === "user";
   const isError = Boolean(message.isError);
   const isClarification = Boolean(message.needsClarification);
   const canSendToDevelopment = !isUser && !isError && !isClarification && Boolean(onSendToDevelopment);
+  // RTE usually finalizes one story; only treat it as a "split" reply (and
+  // show separate blocks/buttons) when there's genuinely more than one.
+  const stories = message.stories && message.stories.length > 1 ? message.stories : null;
 
   const bubbleBackground = isError
     ? theme.colors.errorBg
@@ -49,10 +81,37 @@ const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment }) => 
         <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>
           {label}
           {isClarification && !isUser ? " · Needs clarification" : ""}
+          {stories ? ` · Split into ${stories.length} stories` : ""}
         </div>
-        <div className="chat-markdown">
-          <ReactMarkdown>{message.content}</ReactMarkdown>
-        </div>
+        {stories ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {stories.map((storyContent, idx) => (
+              <div
+                key={idx}
+                style={{
+                  paddingBottom: idx < stories.length - 1 ? 12 : 0,
+                  borderBottom: idx < stories.length - 1 ? `1px dashed ${theme.colors.border}` : "none",
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.6, marginBottom: 4 }}>
+                  Story {idx + 1} of {stories.length}
+                </div>
+                <div className="chat-markdown">
+                  <ReactMarkdown>{storyContent}</ReactMarkdown>
+                </div>
+                {canSendToDevelopment && onSendToDevelopment && (
+                  <div style={{ marginTop: 8 }}>
+                    <SendToDevelopmentButton storyContent={storyContent} onSend={onSendToDevelopment} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="chat-markdown">
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
+        )}
         {message.suggestions && message.suggestions.length > 0 && (
           <div
             style={{
@@ -71,25 +130,9 @@ const ChatMessage: FC<ChatMessageProps> = ({ message, onSendToDevelopment }) => 
             </ul>
           </div>
         )}
-        {canSendToDevelopment && (
+        {!stories && canSendToDevelopment && onSendToDevelopment && (
           <div style={{ marginTop: 8 }}>
-            <button
-              type="button"
-              className="korame-btn korame-btn-primary"
-              style={{ fontSize: 12, padding: "6px 12px" }}
-              disabled={isSending}
-              onClick={async () => {
-                if (isSending) return;
-                setIsSending(true);
-                try {
-                  await onSendToDevelopment?.(message);
-                } finally {
-                  setIsSending(false);
-                }
-              }}
-            >
-              {isSending ? "Starting..." : "Send to Development \u2192"}
-            </button>
+            <SendToDevelopmentButton storyContent={message.content} onSend={onSendToDevelopment} />
           </div>
         )}
       </div>

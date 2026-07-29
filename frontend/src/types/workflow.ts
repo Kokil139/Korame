@@ -10,6 +10,8 @@ export interface WorkflowTodoItem {
   attempts: number;
   /** Latest generated implementation, if any attempt has run yet. */
   code?: string;
+  /** "python" or "html" - which testing strategy was used. */
+  file_type?: string;
   /** Latest pytest output (pass or fail) for this task, if tested yet. */
   test_output?: string;
 }
