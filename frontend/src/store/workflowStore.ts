@@ -55,7 +55,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => {
             ]
           : state.activityLog;
 
-        return { status, activityLog };
+        // Surface a business-level failure (e.g. a caught Ollama/GitHub error
+        // mid-run) through the same error state used for network/poll
+        // failures, so it's actually visible instead of leaving the page
+        // looking silently stuck on the last activity line.
+        const error = status.status === "error" && status.error ? status.error : state.error;
+
+        return { status, activityLog, error };
       });
 
       if (TERMINAL_STATUSES.has(status.status)) {
