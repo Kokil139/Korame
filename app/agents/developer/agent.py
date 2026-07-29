@@ -14,6 +14,7 @@ POST /api/v1/chat endpoint.
 """
 
 import os
+import ast
 import re
 import uuid
 from typing import Any, Optional
@@ -224,9 +225,25 @@ class DeveloperAgent(BaseAgent):
         Only checks the start of the content (not a full-text search) so a
         Python file that merely returns/contains an HTML string somewhere in
         its body (e.g. a Flask view) isn't mistaken for a standalone HTML page.
+
+        Safety net: if there's no HTML signature AND the content doesn't even
+        parse as valid Python, it's treated as "html" (i.e. tested via text
+        assertions, not `import`) anyway - some tasks produce a markup/CSS
+        fragment without a <!DOCTYPE>/<html> wrapper (e.g. a task that split
+        off "styling" from "page structure"), and defaulting an unrecognized,
+        non-Python fragment to "python" would guarantee a doomed import that
+        can never pass no matter how many times it's retried.
         """
         head = code.lstrip()[:200]
-        return "html" if _HTML_SIGNATURE_PATTERN.search(head) else "python"
+        if _HTML_SIGNATURE_PATTERN.search(head):
+            return "html"
+
+        try:
+            ast.parse(code)
+        except SyntaxError:
+            return "html"
+
+        return "python"
 
     @staticmethod
     def _slugify(text: str) -> str:

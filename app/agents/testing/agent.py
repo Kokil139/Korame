@@ -161,16 +161,18 @@ class TestingAgent(BaseAgent):
     def _looks_like_test_infra_failure(output: str) -> bool:
         """
         Distinguish "the test code itself couldn't even run" (this agent's own
-        mistake, e.g. importing an unavailable package despite instructions)
-        from a genuine test failure (an assertion against the implementation
-        that actually ran). Only the former is worth retrying test generation
-        for - a real assertion failure needs to go back to the Developer instead.
+        mistake, e.g. importing an unavailable package, or attempting to
+        `import` a file that isn't actually valid Python) from a genuine test
+        failure (an assertion against the implementation that actually ran).
+        Only the former is worth retrying test generation for - a real
+        assertion failure needs to go back to the Developer instead.
         """
         markers = (
             "ModuleNotFoundError",
-            "ImportError while importing test module",
-            "collection error",
-            "errors during collection",
+            "ImportError",
+            "SyntaxError",
+            "ERROR collecting",
+            "during collection",
         )
         return any(marker in output for marker in markers)
 

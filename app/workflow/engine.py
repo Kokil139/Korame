@@ -213,6 +213,7 @@ class WorkflowEngine:
                         else f"Fixing: {item.title} (attempt {attempt})"
                     )
                     item.code = await developer.implement_item(story, item, test_feedback)
+                    item.file_type = developer.detect_file_type(item.code)
                     item.status = TodoStatus.TESTING
 
                     todo_list.current_agent = "testing"
@@ -221,6 +222,7 @@ class WorkflowEngine:
                         run_id=f"{todo_list.id}-{item.id}",
                         task_title=item.title,
                         code=item.code,
+                        file_type=item.file_type,
                     )
                     item.test_code = test_result["test_code"]
                     item.test_output = test_result["output"]
