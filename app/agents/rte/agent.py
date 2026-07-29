@@ -26,6 +26,9 @@ _NUMBERED_ITEM_PATTERN = re.compile(r"^[ \t]*\d+[\.\)][ \t]*(.+)$", re.MULTILINE
 _SUGGESTIONS_HEADER_PATTERN = re.compile(r"^[ \t]*SUGGESTIONS:[ \t]*$", re.IGNORECASE | re.MULTILINE)
 # Matches bullet list items, e.g. "- suggestion" or "* suggestion"
 _BULLET_ITEM_PATTERN = re.compile(r"^[ \t]*[-*][ \t]*(.+)$", re.MULTILINE)
+# Splits a Format-B reply into individual story blocks when RTE decided the
+# requirement needed multiple independent stories (see rte.md instructions).
+_STORY_SEPARATOR_PATTERN = re.compile(r"^[ \t]*-{3,}[ \t]*$", re.MULTILINE)
 
 
 def _extract_title(content: str, fallback: str) -> str:
