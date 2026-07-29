@@ -311,6 +311,75 @@ class WorkflowEngine:
             todo_list.current_activity = f"Error: {error_message}"
             return {"status": "error", "error": error_message}
 
+    async def execute_multi_story_cycle(
+        self,
+        story_run: Any,
+        conversation_id: Optional[str] = None,
+        conversation_memory: Optional[Any] = None,
+        max_attempts_per_item: int = 5,
+    ) -> None:
+        """
+        Run the Developer <-> Testing cycle for each story in a StoryRun, one
+        after another - only starting the next story once the current one
+        either completes or gets stuck (out of retries on some task). This is
+        the "only for complex, multi-story requirements" automatic sequencing
+        RTE's split decision feeds into; a single-story requirement never
+        reaches this method at all (it uses execute_development_cycle()
+        directly via POST /develop, unchanged).
+
+        Reuses execute_development_cycle() as-is for each story - same
+        implement -> test -> retry -> PR -> report-to-RTE behavior, just
+        sequenced across multiple stories instead of a single manual trigger.
+
+        Args:
+            story_run: A StoryRun already registered in the shared StoryRunStore
+            conversation_id: The RTE conversation these stories came from, so
+                each story's completion report can be posted back to it
+            conversation_memory: The shared ConversationMemory to post reports into
+            max_attempts_per_item: Max implement/test retries per todo item,
+                passed through to each story's execute_development_cycle() call
+        """
+        developer = self.registry.get_agent("developer")
+        if not developer:
+            story_run.status = "error"
+            story_run.error = "Developer agent not registered"
+            return
+
+        try:
+            story_run.status = "running"
+            for i, (title, story) in enumerate(zip(story_run.story_titles, story_run.stories)):
+                story_run.current_index = i
+                todo_list = developer.start_run(title)
+                story_run.todo_list_ids.append(todo_list.id)
+
+                await self.execute_development_cycle(
+                    todo_list=todo_list,
+                    story=story,
+                    max_attempts_per_item=max_attempts_per_item,
+                    conversation_id=conversation_id,
+                    conversation_memory=conversation_memory,
+                )
+
+                if not todo_list.is_complete():
+                    # This story got stuck - either an internal error (todo_list.status
+                    # == "error") or it simply ran out of retries on some task
+                    # ("failed", with no exception at all) - either way, don't start
+                    # the next story on top of an unresolved one. Surface whatever
+                    # explanation is available at the story-run level too, not just
+                    # buried inside this one story's own TodoList/report.
+                    story_run.status = "error" if todo_list.status == "error" else "failed"
+                    story_run.error = todo_list.error or (
+                        f'Story "{title}" did not complete - see its task detail for specifics.'
+                    )
+                    return
+
+            story_run.status = "complete"
+        except Exception as e:
+            error_message = str(e) or type(e).__name__
+            logger.exception(f"Multi-story run {story_run.id} failed")
+            story_run.status = "error"
+            story_run.error = error_message
+
     @staticmethod
     def _build_development_report(todo_list: Any, pull_request: Optional[dict[str, Any]]) -> str:
         """Build the human-readable status update posted back to the RTE conversation."""
