@@ -47,7 +47,13 @@ class TestingAgent(BaseAgent):
             "only a Python code block."
         )
 
-    async def generate_tests(self, task_title: str, code: str, file_type: str = "python") -> str:
+    async def generate_tests(
+        self,
+        task_title: str,
+        code: str,
+        file_type: str = "python",
+        prior_error: Optional[str] = None,
+    ) -> str:
         """
         Ask the model to write pytest tests for the given implementation.
 
@@ -57,6 +63,9 @@ class TestingAgent(BaseAgent):
             file_type: "python" (default) or "html" - an HTML page can't be
                 `import`-ed like a module, so it needs a different testing
                 strategy (structural assertions on the file's raw text).
+            prior_error: If the last generated test failed to even run (e.g.
+                it imported an unavailable package), the pytest collection
+                error, so this attempt can be told specifically what to avoid.
 
         Returns:
             Generated pytest test source code
@@ -85,11 +94,25 @@ class TestingAgent(BaseAgent):
                 "implemented."
             )
 
+        error_section = ""
+        if prior_error:
+            error_section = (
+                "\n\n## Your Previous Test Failed To Even Run\n"
+                f"Collection error:\n{prior_error}\n\n"
+                "This means the TEST CODE ITSELF has a problem (most likely it "
+                "imported a package that isn't installed) - the implementation was "
+                "never actually exercised. Fix the test so it runs: import ONLY from "
+                "Python's standard library (e.g. re, html.parser, json, os, "
+                "unittest.mock) plus `pytest` and `implementation` itself. Do NOT "
+                "import bs4/BeautifulSoup, requests, selenium, playwright, lxml, "
+                "flask, or any other third-party package."
+            )
+
         prompt = (
             f"{self.prompt_template}\n\n"
             f"## Task\n{task_title}\n\n"
             f"{implementation_section}"
-            f"{strategy} Respond with ONLY the test code in a fenced Python code block."
+            f"{strategy}{error_section} Respond with ONLY the test code in a fenced Python code block."
         )
         result = await provider.call(prompt, temperature=0.3, max_tokens=1500)
         return self._extract_code(result)
@@ -98,6 +121,14 @@ class TestingAgent(BaseAgent):
         """
         Write the implementation and generated tests into an isolated sandbox and
         actually execute pytest against them.
+
+        If the generated test itself fails to even run (e.g. it imported a
+        package that isn't installed, despite being told to use only the
+        standard library), that's this agent's own mistake, not a real finding
+        about the implementation - retrying the Developer's code would be
+        pointless since the test never actually ran against it. In that case,
+        test generation gets one do-over with the specific error, keeping the
+        same implementation, before falling back to reporting whatever happened.
 
         Args:
             run_id: Unique ID for this test run (used as the sandbox folder name)
@@ -116,9 +147,32 @@ class TestingAgent(BaseAgent):
             test_code = await self.generate_tests(task_title, code, file_type)
             sandbox.write_file("test_implementation.py", test_code)
             result = await sandbox.run_pytest()
+
+            if not result.passed and self._looks_like_test_infra_failure(result.output):
+                test_code = await self.generate_tests(task_title, code, file_type, prior_error=result.output)
+                sandbox.write_file("test_implementation.py", test_code)
+                result = await sandbox.run_pytest()
+
             return {"passed": result.passed, "output": result.output, "test_code": test_code}
         finally:
             sandbox.cleanup()
+
+    @staticmethod
+    def _looks_like_test_infra_failure(output: str) -> bool:
+        """
+        Distinguish "the test code itself couldn't even run" (this agent's own
+        mistake, e.g. importing an unavailable package despite instructions)
+        from a genuine test failure (an assertion against the implementation
+        that actually ran). Only the former is worth retrying test generation
+        for - a real assertion failure needs to go back to the Developer instead.
+        """
+        markers = (
+            "ModuleNotFoundError",
+            "ImportError while importing test module",
+            "collection error",
+            "errors during collection",
+        )
+        return any(marker in output for marker in markers)
 
     @staticmethod
     def _extract_code(text: str) -> str:
