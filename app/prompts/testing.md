@@ -14,6 +14,7 @@ Tests are always plain pytest, using Python's standard library only (no browsers
 In both cases:
 - Cover the normal case and at least one edge case where reasonable.
 - Tests must be fully self-contained and runnable with no external services, network access, or extra fixtures beyond what pytest provides by default.
+- **Only import from Python's standard library** (e.g. `re`, `html.parser`, `json`, `os`, `datetime`, `unittest.mock`) plus `pytest` and `implementation` itself. Never import `bs4`/`BeautifulSoup`, `requests`, `selenium`, `playwright`, `lxml`, `flask`, or any other third-party/pip-installed package - none of them are guaranteed to be installed, and an ImportError/ModuleNotFoundError will fail the ENTIRE test file before a single test can run.
 
 ## Output Format
 
