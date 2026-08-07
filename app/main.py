@@ -72,13 +72,30 @@ def create_app() -> FastAPI:
     logger.info("Initialized Knowledge Fabric")
 
     # Register providers
-    ollama_provider = OllamaProvider(
+    # Developer + Testing agents share the coder model (format-constrained
+    # code generation; thinking disabled to protect token budget).
+    coder_provider = OllamaProvider(
         base_url=settings.ollama_url,
-        model=settings.ollama_model
+        model=settings.ollama_model,
     )
-    registry.register_provider(ollama_provider)
-    model_router.set_default_provider(ollama_provider)
-    logger.info(f"Registered Ollama provider: {settings.ollama_model}")
+    registry.register_provider(coder_provider)
+    model_router.set_default_provider(coder_provider)
+
+    # RTE agent gets its own model (reasoning/thinking-capable) — can be the
+    # same as OLLAMA_MODEL or a different one (e.g. qwen3:8b).
+    if settings.ollama_rte_model != settings.ollama_model:
+        rte_provider = OllamaProvider(
+            base_url=settings.ollama_url,
+            model=settings.ollama_rte_model,
+        )
+        registry.register_provider_as(rte_provider, "ollama-rte")
+    else:
+        rte_provider = coder_provider
+    model_router.register_agent_provider("rte", rte_provider)
+    logger.info(
+        f"Model routing: rte={settings.ollama_rte_model}, "
+        f"developer/testing={settings.ollama_model}"
+    )
 
     # Register agents
     rte_agent = RTEAgent(model_router=model_router, knowledge_fabric=knowledge_fabric)

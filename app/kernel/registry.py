@@ -33,7 +33,7 @@ class Registry:
 
     def register_provider(self, provider: Provider) -> None:
         """
-        Register a provider.
+        Register a provider using its own ``provider.name`` as the key.
 
         Args:
             provider: The provider to register
@@ -44,6 +44,24 @@ class Registry:
         if provider.name in self._providers:
             raise ValueError(f"Provider '{provider.name}' is already registered")
         self._providers[provider.name] = provider
+
+    def register_provider_as(self, provider: Provider, name: str) -> None:
+        """
+        Register a provider under an explicit name (instead of ``provider.name``).
+
+        Useful when multiple instances of the same provider type are needed
+        (e.g. two OllamaProviders pointing at different models).
+
+        Args:
+            provider: The provider to register.
+            name:     The key to register it under.
+
+        Raises:
+            ValueError: If a provider with that name is already registered.
+        """
+        if name in self._providers:
+            raise ValueError(f"Provider '{name}' is already registered")
+        self._providers[name] = provider
 
     def get_agent(self, name: str) -> Optional[Agent]:
         """

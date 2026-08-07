@@ -19,18 +19,38 @@ from app.utils import logger
 # response (numbered lists, STATUS: markers, title extraction, etc.).
 _THINK_BLOCK_PATTERN = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
+# Model name substrings that indicate support for Ollama's `think` parameter.
+# All other models silently ignore the think kwarg so no 400 is raised.
+_THINKING_MODEL_PATTERNS: tuple[str, ...] = ("qwen3",)
+
+
+def _model_supports_thinking(model: str) -> bool:
+    """Return True if this Ollama model understands the ``think`` parameter."""
+    model_lower = model.lower()
+    return any(pat in model_lower for pat in _THINKING_MODEL_PATTERNS)
+
 
 class OllamaProvider(Provider):
     """Provider for Ollama models using the Ollama HTTP API.
 
     Example usage: Ollama running locally at http://localhost:11434
-    with model name like "qwen2.5-coder:7b".
+    with model name like "qwen2.5-coder:7b" or "qwen3:8b".
+
+    The ``think`` kwarg passed by agents (``think=True`` for deliberative
+    tasks, ``think=False`` for format-constrained code generation) is only
+    forwarded to Ollama for models whose names match ``_THINKING_MODEL_PATTERNS``
+    (currently the Qwen3 family).  All other models receive no ``think`` field
+    so they never return a 400 for an unsupported parameter.
     """
 
     def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen2.5-coder:7b"):
         super().__init__("ollama")
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self._thinking_supported: bool = _model_supports_thinking(model)
+        logger.info(
+            f"OllamaProvider: model={model}, thinking_supported={self._thinking_supported}"
+        )
 
     async def call(self, prompt: str, **kwargs: Any) -> str:
         """
@@ -50,28 +70,30 @@ class OllamaProvider(Provider):
         # the Developer/Testing agents' longer generations.
         timeout = kwargs.get("timeout", 300)
         max_retries = kwargs.get("max_retries", 1)
-        payload = {
+        # Only include `think` when the caller requests it AND the model
+        # actually supports the thinking API (Qwen3 family).
+        # • think=True  + thinking model  → payload["think"] = True
+        # • think=True  + non-thinking    → field omitted (model can't use it)
+        # • think=False (any model)       → field omitted (Ollama's default)
+        # This avoids the HTTP 400 Ollama returns when an unsupported parameter
+        # is sent to a model like qwen2.5-coder:7b.
+        think_requested: bool = bool(kwargs.get("think", False))
+        payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
             # Non-streaming mode for simplicity
             "stream": False,
-            # Hybrid reasoning models (notably Qwen3) can spend a large chunk
-            # of num_predict on a <think>...</think> block before actually
-            # answering, leaving too little budget left for the real
-            # response - this is what was producing truncated ("half-cooked")
-            # code from the Developer agent. Ollama lets compatible models
-            # skip that step per-request; older Ollama versions simply
-            # ignore this unknown field. Overridable via the `think` kwarg.
-            "think": kwargs.get("think", False),
             # Generation params belong under "options" for Ollama's /api/generate
-            # endpoint. Passing them as top-level fields (as before) is silently
-            # ignored by Ollama, so temperature/output length were never
-            # actually being honored by any agent.
+            # endpoint. Passing them as top-level fields is silently ignored by
+            # Ollama, so temperature/output length were never actually being
+            # honored by any agent.
             "options": {
                 "num_predict": kwargs.get("max_tokens", 2000),
                 "temperature": kwargs.get("temperature", 0.7),
             },
         }
+        if think_requested and self._thinking_supported:
+            payload["think"] = True
 
         url = f"{self.base_url}/api/generate"
 
