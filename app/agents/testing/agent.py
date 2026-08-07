@@ -54,6 +54,7 @@ class TestingAgent(BaseAgent):
         file_type: str = "python",
         filename: str = "",
         prior_error: Optional[str] = None,
+        story: Optional[str] = None,
     ) -> str:
         """
         Ask the model to write pytest tests for the given implementation.
@@ -61,35 +62,45 @@ class TestingAgent(BaseAgent):
         Args:
             task_title: Description of the task the code should satisfy
             code: The implementation to test
-            file_type: "python" (default) or "html" - an HTML page can't be
-                `import`-ed like a module, so it needs a different testing
-                strategy (structural assertions on the file's raw text).
+            file_type: "python" (default) or "html"
             filename: This task's actual filename in the shared workspace
-                (e.g. "contact_form.py" or "index.html") - every task in a
-                multi-file story (like a multi-page site) gets its own file,
-                so the test must reference THIS task's specific name rather
-                than an assumed generic "implementation".
-            prior_error: If the last generated test failed to even run (e.g.
-                it imported an unavailable package), the pytest collection
-                error, so this attempt can be told specifically what to avoid.
+            prior_error: If the last generated test failed to even run, the
+                pytest collection error so this attempt can avoid the same mistake.
+            story: The full user story text (with acceptance criteria). When
+                provided the tester checks against the story’s explicit
+                requirements only, not invented behaviour.
 
         Returns:
             Generated pytest test source code
         """
         provider = self.model_router.default_provider
+
+        story_section = ""
+        if story:
+            story_section = f"## User Story (test ONLY what this requires)\n{story}\n\n"
+
         if file_type == "html":
             impl_filename = filename or "implementation.html"
             implementation_section = (
                 f"## Implementation (saved as {impl_filename})\n```html\n{code}\n```\n\n"
             )
             strategy = (
-                f"This implementation is a standalone HTML page, not a Python module - "
-                f"it cannot be imported. Write pytest test cases in a single file that "
-                f"open() and read {impl_filename} as plain text (optionally using "
-                "the standard library's html.parser), then assert on the specific "
-                "structure/content the task requires. Do not try to import the HTML "
-                "file, and do not use a browser, Selenium, or any package outside the "
-                "Python standard library."
+                f"This is a standalone HTML page saved as **{impl_filename}**.\n"
+                "Write pytest tests that:\n"
+                f"1. Open the file: `html = open('{impl_filename}', encoding='utf-8').read()`\n"
+                "2. Assert the file is non-empty.\n"
+                "3. Check ONLY for the elements/content mentioned in the Task title and User Story above.\n"
+                "\n"
+                "**HTML assertion rules (follow strictly):**\n"
+                "- ALWAYS lowercase before comparing: `html_lower = html.lower()`\n"
+                "- Use `in`, never `==`. E.g.: `assert 'contact' in html_lower`\n"
+                "- For form fields, check for the field name keyword: "
+                "`assert 'name' in html_lower` not `assert 'id=\"name\"' in html`\n"
+                "- Do NOT test for nav bars, footers, sidebars, CSS class names, "
+                "or any HTML element/attribute NOT explicitly mentioned in the story.\n"
+                "- Do NOT check exact punctuation or capitalisation.\n"
+                "- Three passing assertions is enough — do not pad with redundant checks.\n"
+                "Do not try to import the HTML file or use a browser."
             )
         else:
             impl_filename = filename or "implementation.py"
@@ -98,9 +109,10 @@ class TestingAgent(BaseAgent):
                 f"## Implementation (saved as {impl_filename})\n```python\n{code}\n```\n\n"
             )
             strategy = (
-                f"Write pytest test cases in a single file that `import {module_name}` "
+                f"Write pytest tests that `import {module_name}` "
                 f"(or `from {module_name} import ...`) and verify the task is correctly "
-                "implemented."
+                "implemented against the acceptance criteria in the User Story above. "
+                "Test the behaviour that IS there, not behaviour the story doesn't mention."
             )
 
         error_section = ""
@@ -109,28 +121,31 @@ class TestingAgent(BaseAgent):
                 "\n\n## Your Previous Test Failed To Even Run\n"
                 f"Collection error:\n{prior_error}\n\n"
                 "This means the TEST CODE ITSELF has a problem (most likely it "
-                "imported a package that isn't installed) - the implementation was "
-                "never actually exercised. Fix the test so it runs: import ONLY from "
-                "Python's standard library (e.g. re, html.parser, json, os, "
-                "unittest.mock) plus `pytest` and the implementation module itself. Do "
-                "NOT import bs4/BeautifulSoup, requests, selenium, playwright, lxml, "
-                "flask, or any other third-party package."
+                "imported a package that isn't installed, or the file path was wrong) - "
+                "the implementation was never actually exercised. Fix the test so it "
+                "runs: import ONLY from Python's standard library (e.g. re, html.parser, "
+                "json, os, datetime, unittest.mock) plus `pytest` and the implementation "
+                "module itself. Do NOT import bs4/BeautifulSoup, requests, selenium, "
+                "playwright, lxml, flask, or any other third-party package."
             )
 
         prompt = (
             f"{self.prompt_template}\n\n"
             f"## Task\n{task_title}\n\n"
+            f"{story_section}"
             f"{implementation_section}"
             f"{strategy}{error_section} Respond with ONLY the test code in a fenced Python code block."
         )
         result = await provider.call(
             prompt,
-            temperature=0.2,
-            # Same rationale as implement_item: let the model write the
-            # complete test file without being truncated mid-function.
+            temperature=0.1,
+            # Low temperature: test code should be precise and deterministic.
+            # Full context window so the complete implementation is seen.
+            # timeout=720: generous window for the model to reason through
+            # all the acceptance criteria before writing tests.
             max_tokens=-1,
-            num_ctx=16384,
-            timeout=480,
+            num_ctx=32768,
+            timeout=720,
         )
         return self._extract_code(result)
 
@@ -141,6 +156,7 @@ class TestingAgent(BaseAgent):
         code: str,
         file_type: str = "python",
         filename: str = "",
+        story: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Write the implementation and generated tests into a shared sandbox and
@@ -155,19 +171,13 @@ class TestingAgent(BaseAgent):
         same implementation, before falling back to reporting whatever happened.
 
         Args:
-            sandbox: The shared, per-story Sandbox (created and cleaned up by
-                the caller, NOT here) - every task in the same story writes
-                into this same directory, so the workspace accumulates the
-                whole project (e.g. every page of a multi-page site) instead
-                of each task getting a throwaway directory that's wiped the
-                moment its own test finishes.
+            sandbox: The shared, per-story Sandbox
             task_title: Description of the task the code should satisfy
             code: The implementation to test
-            file_type: "python" (default) or "html" - determines the saved
-                implementation file's extension and the testing strategy used
+            file_type: "python" (default) or "html"
             filename: This task's own filename within the shared sandbox
-                (e.g. "contact_form.py" or "about.html") - falls back to a
-                generic name only if the caller doesn't provide one
+            story: Full user story text (with acceptance criteria); passed to
+                the test generator so it only checks story-required behaviour.
 
         Returns:
             Dict with `passed`, `output` (pytest output), and `test_code` (what was run)
@@ -176,20 +186,14 @@ class TestingAgent(BaseAgent):
         test_filename = f"test_{impl_filename.rsplit('.', 1)[0]}.py"
 
         sandbox.write_file(impl_filename, code)
-        test_code = await self.generate_tests(task_title, code, file_type, filename=impl_filename)
+        test_code = await self.generate_tests(task_title, code, file_type, filename=impl_filename, story=story)
         sandbox.write_file(test_filename, test_code)
-        # Targets just this task's own test file, not the whole shared
-        # directory - re-running every previously-passing task's tests on
-        # every retry would be slow, and a failure elsewhere would muddy the
-        # feedback attributed to THIS task. Cross-task regressions are an
-        # accepted trade-off here in exchange for fast, clearly-attributed
-        # per-task feedback (each task is designed to be independently
-        # testable in the first place - see prompts/developer.md).
         result = await sandbox.run_pytest(target=test_filename)
 
         if not result.passed and self._looks_like_test_infra_failure(result.output):
             test_code = await self.generate_tests(
-                task_title, code, file_type, filename=impl_filename, prior_error=result.output
+                task_title, code, file_type, filename=impl_filename,
+                prior_error=result.output, story=story,
             )
             sandbox.write_file(test_filename, test_code)
             result = await sandbox.run_pytest(target=test_filename)
@@ -200,11 +204,9 @@ class TestingAgent(BaseAgent):
     def _looks_like_test_infra_failure(output: str) -> bool:
         """
         Distinguish "the test code itself couldn't even run" (this agent's own
-        mistake, e.g. importing an unavailable package, or attempting to
-        `import` a file that isn't actually valid Python) from a genuine test
-        failure (an assertion against the implementation that actually ran).
-        Only the former is worth retrying test generation for - a real
-        assertion failure needs to go back to the Developer instead.
+        mistake) from a genuine assertion failure (the implementation was wrong).
+        Infra failures are worth retrying test generation for; assertion failures
+        need to go back to the Developer instead.
         """
         markers = (
             "ModuleNotFoundError",
@@ -212,6 +214,9 @@ class TestingAgent(BaseAgent):
             "SyntaxError",
             "ERROR collecting",
             "during collection",
+            "FileNotFoundError",  # HTML test opened wrong filename
+            "No such file or directory",
+            "NameError",          # undefined variable in test (model forgot to define something)
         )
         return any(marker in output for marker in markers)
 

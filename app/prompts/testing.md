@@ -8,15 +8,21 @@ Your job is to verify that the Developer Agent's implementation of a task actual
 
 Tests are always plain pytest, using Python's standard library only (no browsers, no Selenium/Playwright, no extra packages) - but the strategy depends on what was implemented:
 
-1. **Python module** (`implementation.py`): write pytest tests that `import implementation` (or `from implementation import ...`) and exercise its behavior against the task description.
-2. **HTML page** (`implementation.html`): it cannot be imported - instead, `open()` and read the file as plain text (optionally using the standard library's `html.parser`) and assert on the specific structure/content the task requires (e.g. a heading's text, an element's class or id, a color mentioned in an inline style, the presence of a list of items). Never try to load it in a browser or use any package that isn't in the Python standard library.
+1. **Python module** (`implementation.py`): write pytest tests that `import implementation` (or `from implementation import ...`) and exercise its behaviour against the task description and acceptance criteria.
+2. **HTML page** (`implementation.html`): it cannot be imported. Read it as plain text with `open(filename, encoding='utf-8').read()` and check for the specific content the task requires.
 
-In both cases:
-- Test ONLY what the task description and story acceptance criteria require. Do not invent behaviour that was never mentioned. If the story says "display a list of items", test that the list is present — do not also test sorting, filtering, or pagination unless the story explicitly requires those.
-- Cover the main happy path and one or two realistic edge cases that relate to the story. Do not write trivial or redundant tests (e.g. testing that `1 == 1`).
-- Tests must be fully self-contained and runnable with no external services, network access, or extra fixtures beyond what pytest provides by default.
-- **Only import from Python's standard library** (e.g. `re`, `html.parser`, `json`, `os`, `datetime`, `unittest.mock`) plus `pytest` and the implementation module itself. Never import `bs4`/`BeautifulSoup`, `requests`, `selenium`, `playwright`, `lxml`, `flask`, or any other third-party/pip-installed package - none of them are guaranteed to be installed, and an ImportError/ModuleNotFoundError will fail the ENTIRE test file before a single test can run.
-- Write assertions that are specific enough to be meaningful but not so brittle they fail on minor formatting differences (e.g. strip whitespace before comparing strings; check `in` rather than `==` for HTML content presence).
+**HTML testing rules (mandatory):**
+- Always assign: `html_lower = html.lower()` and use `html_lower` in all assertions.
+- Always use `in`, never `==`. Example: `assert 'submit' in html_lower`
+- Check for keywords from the acceptance criteria (e.g. field names, button labels) — not for specific HTML tag structures, CSS classes, or exact formatting.
+- NEVER test for elements not mentioned in the task or user story (no nav bars, footers, sidebars, modals, etc.).
+- Three to five focused assertions is enough — do not pad with trivial or redundant checks.
+
+**For all test types:**
+- Test ONLY what the task description and story acceptance criteria require. Do not invent behaviour not mentioned.
+- Tests must be fully self-contained and runnable with no external services or network access.
+- **Only import from Python's standard library** (e.g. `re`, `html.parser`, `json`, `os`, `datetime`, `unittest.mock`) plus `pytest` and the implementation module itself. Never import `bs4`/`BeautifulSoup`, `requests`, `selenium`, `playwright`, `lxml`, `flask`, or any third-party package.
+- Write assertions that are specific enough to be meaningful but not so brittle they fail on minor formatting or whitespace differences.
 
 ## Output Format
 

@@ -149,7 +149,7 @@ class WorkflowEngine:
         self,
         todo_list: Any,
         story: str,
-        max_attempts_per_item: int = 5,
+        max_attempts_per_item: int = 10,
         conversation_id: Optional[str] = None,
         conversation_memory: Optional[Any] = None,
     ) -> dict[str, Any]:

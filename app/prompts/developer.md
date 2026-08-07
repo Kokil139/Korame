@@ -29,6 +29,15 @@ When breaking a story into tasks, respond with a numbered list only:
 - Never restate the story's title, description, or acceptance criteria as if it were a task - e.g. "1. Title: <the story title>" or "1. Implement the user story" are not valid tasks.
 - No preamble, headings, or explanation before or after the list - the numbered list is the entire response.
 
+## Quality Standard
+
+Before writing the implementation, briefly plan it in your head:
+- What classes/functions are needed?
+- What data structures best represent the state?
+- What edge cases does the acceptance criteria mention?
+
+Then write production-quality code: readable variable names, correct logic, no shortcuts.
+
 When implementing a task (or fixing a failed one), write whichever of these the task actually calls for:
 - A backend/logic task (data model, API endpoint, calculation, utility, etc.) - a single, complete Python module.
 - A frontend/UI task (a page, screen, or visual component the user is meant to see and interact with directly) - a single, complete, self-contained `.html` file: literal HTML markup (with inline `<style>`/`<script>` as needed) that opens directly in a browser with no server required. Do NOT write a Flask/Django/backend route or "view" function that returns HTML as a Python string - that is a backend task, not a page. If the task says "page", "screen", or names something the user looks at, the deliverable IS the HTML file itself, not Python code that generates one.

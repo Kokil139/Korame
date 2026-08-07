@@ -110,6 +110,7 @@ def build_dev_test_graph(
             code=item.code,
             file_type=item.file_type,
             filename=item.filename,
+            story=story,
         )
         item.test_code = test_result["test_code"]
         item.test_output = test_result["output"]

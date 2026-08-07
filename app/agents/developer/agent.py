@@ -126,7 +126,8 @@ class DeveloperAgent(BaseAgent):
         # web app" implies multiple pages, not one form - is a judgment call
         # that benefits from deliberation, not a format-constrained output
         # where reasoning tokens mostly just risk truncating the list.
-        result = await provider.call(prompt, temperature=0.2, max_tokens=2000, think=True)
+        result = await provider.call(prompt, temperature=0.2, max_tokens=2000, think=True,
+                                      num_ctx=32768, timeout=600)
         task_titles = [t.strip() for t in _NUMBERED_ITEM_PATTERN.findall(result) if t.strip()]
         task_titles = [_LABEL_PREFIX_PATTERN.sub("", t).strip() or t for t in task_titles]
         if not task_titles:
@@ -163,12 +164,14 @@ class DeveloperAgent(BaseAgent):
                 f"\n\n## Your Previous Attempt Failed Testing\n"
                 f"{test_code_section}\n"
                 f"### Pytest Output\n```\n{test_feedback}\n```\n\n"
-                "Read the failure above carefully:\n"
-                "- Identify the EXACT line in the test code that asserted something.\n"
-                "- Understand WHY your code didn't satisfy it.\n"
-                "- Make a TARGETED fix to satisfy that specific assertion.\n"
-                "- Do NOT rewrite the whole module from scratch unless the entire approach was wrong.\n"
-                "- Do NOT add fake pass-throughs or special-case the test — make the code genuinely correct."
+                "Before writing the fix, add a brief comment block at the very top of "
+                "your code (using # for Python, <!-- --> for HTML) that:\n"
+                "1. States the exact assertion or error that failed.\n"
+                "2. Explains in one sentence WHY the previous code didn't satisfy it.\n"
+                "3. States what specific change you will make.\n"
+                "Then write the COMPLETE corrected implementation below the comment.\n"
+                "Do NOT rewrite from scratch unless the entire approach was wrong.\n"
+                "Do NOT add fake pass-throughs or special-case the test — make the code genuinely correct."
             )
 
         prompt = (
@@ -186,17 +189,22 @@ class DeveloperAgent(BaseAgent):
             "the code in ONE fenced code block using the correct language tag - "
             "no explanation."
         )
+        # Use a lower temperature on retries — the fix should be targeted and
+        # deterministic, not exploratory. First attempts get 0.2 to allow some
+        # creative latitude; retries get 0.1 to stay focused on the exact issue.
+        temperature = 0.1 if test_feedback else 0.2
         result = await provider.call(
             prompt,
-            temperature=0.2,
+            temperature=temperature,
             # num_predict=-1: let the model finish the complete implementation
             # naturally (EOS) rather than cutting it off at a token cap.
-            # num_ctx=16384: generous context so prompt + full code response
-            # fit comfortably within the 32k native window of both models.
-            # timeout=600: complex implementations on CPU can take 5-10 min.
+            # num_ctx=32768: full context window — story + test code + impl
+            # can approach 8-12k tokens on complex tasks; 32k gives plenty
+            # of headroom. timeout=900: quality over speed — better a correct
+            # 10-minute response than a truncated 3-minute one.
             max_tokens=-1,
-            num_ctx=16384,
-            timeout=600,
+            num_ctx=32768,
+            timeout=900,
         )
         return self._extract_code(result)
 
