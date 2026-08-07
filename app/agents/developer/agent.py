@@ -327,23 +327,79 @@ class DeveloperAgent(BaseAgent):
         return "python"
 
     @staticmethod
-    def derive_filename(title: str, file_type: str) -> str:
+    @staticmethod
+    def derive_filename(title: str, file_type: str, code: str = "") -> str:
         """
-        Derive a stable, per-task filename so multiple tasks can coexist as
-        separate files in the same shared per-story workspace, instead of
-        every task overwriting one generic "implementation.py"/
-        "implementation.html" (which is what silently collapsed a multi-page
-        site down to a single leftover file before this fix).
+        Derive a stable, per-task filename.  For HTML, inspects the generated
+        code’s ``<title>`` tag and maps it to a conventional page name (index,
+        contact, about …) before falling back to the task-title slug.  For
+        Python, tries to extract the first public class or function name via
+        the AST so the module has a meaningful import name.
 
         Args:
-            title: The task's title
-            file_type: "python" or "html", as detected from the generated code
+            title:     The task’s title (fallback source for the filename).
+            file_type: "python" or "html", as detected from the generated code.
+            code:      The generated source; used for smarter name extraction.
 
         Returns:
-            A filesystem- and (for Python) import-safe filename
+            A filesystem- and (for Python) import-safe filename.
         """
         if file_type == "html":
-            return f"{DeveloperAgent._slugify(title)}.html"
+            return DeveloperAgent._derive_html_filename(title, code)
+        return DeveloperAgent._derive_python_filename(title, code)
+
+    # ------------------------------------------------------------------
+    # Filename helpers
+    # ------------------------------------------------------------------
+
+    # Maps sets of keywords found in an HTML page’s <title> (or task title)
+    # to conventional page filenames used by real websites.
+    _PAGE_KEYWORD_MAP: list[tuple[tuple[str, ...], str]] = [
+        (("home", "index", "main", "landing", "welcome", "start"), "index.html"),
+        (("contact", "reach", "get in touch", "touch"), "contact.html"),
+        (("about", "who we are", "our story", "about us", "team", "company"), "about.html"),
+        (("service", "what we do", "offering", "solution"), "services.html"),
+        (("portfolio", "work", "project", "case study", "gallery"), "portfolio.html"),
+        (("blog", "post", "article", "news"), "blog.html"),
+        (("faq", "frequently asked", "question"), "faq.html"),
+        (("privacy",), "privacy.html"),
+        (("terms", "conditions", "legal"), "terms.html"),
+        (("login", "sign in", "signin"), "login.html"),
+        (("register", "sign up", "signup"), "register.html"),
+        (("dashboard", "admin", "panel"), "dashboard.html"),
+        (("shop", "store", "cart", "checkout"), "shop.html"),
+        (("pricing", "plan", "price"), "pricing.html"),
+    ]
+
+    @staticmethod
+    def _derive_html_filename(title: str, code: str) -> str:
+        """Derive a meaningful HTML filename from the page's <title> tag or task title."""
+        # Prefer the <title> tag text over the task title—it reflects the
+        # actual page name the developer chose, not the engineering task name.
+        title_match = re.search(r"<title[^>]*>([^<]+)</title>", code, re.IGNORECASE)
+        page_name = (title_match.group(1).strip() if title_match else title).lower()
+
+        for keywords, filename in DeveloperAgent._PAGE_KEYWORD_MAP:
+            if any(kw in page_name for kw in keywords):
+                return filename
+
+        # No keyword matched — slug the page name (from <title> if found, else task title)
+        slug = re.sub(r"[^a-z0-9]+", "-", page_name).strip("-")[:40]
+        return f"{slug or 'page'}.html"
+
+    @staticmethod
+    def _derive_python_filename(title: str, code: str) -> str:
+        """Derive a Python module filename from the first public class/function in the code."""
+        if code:
+            try:
+                tree = ast.parse(code)
+                for node in ast.walk(tree):
+                    if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and not node.name.startswith("_"):
+                        safe = re.sub(r"[^a-z0-9]+", "_", node.name.lower()).strip("_")[:40]
+                        if safe and not safe[0].isdigit():
+                            return f"{safe}.py"
+            except SyntaxError:
+                pass  # unparseable — fall through to title-based slug
 
         module_name = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")[:50] or "task"
         if module_name[0].isdigit():
