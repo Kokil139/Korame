@@ -513,6 +513,280 @@ For actual emergencies (security breach, data loss, service down):
 
 ---
 
+# Phase 1 ADRs (What Was Actually Built)
+
+The ADRs above (001-005) describe the target architecture. The ADRs below
+document real decisions made while implementing Phase 1 — a smaller,
+concrete pipeline (RTE → Developer → Testing) that deliberately diverges
+from that target in specific, documented ways. See
+[BUILD-SUMMARY.md](BUILD-SUMMARY.md) for what Phase 1 actually does.
+
+---
+
+## ADR-006: Direct Method Calls Instead of Event Bus for Phase 1
+
+## Status
+ACCEPTED
+
+## Context
+ADR-001 specifies a Redis event bus as the permanent inter-agent
+communication mechanism. Phase 1 has exactly three agents (RTE, Developer,
+Testing) coordinated by a single `WorkflowEngine`, and needs to ship a
+working, testable pipeline without standing up and operating Redis.
+
+## Decision
+**Phase 1's `WorkflowEngine` calls agent methods directly** (e.g.
+`developer.populate_todo_list(...)`, `tester.run_tests(...)`) inside
+`execute_development_cycle()` / `execute_multi_story_cycle()`, instead of
+publishing/subscribing to events.
+
+## Rationale
+- With only 3 agents and one orchestrator process, an event bus adds
+  operational overhead (Redis dependency, serialization, subscriber wiring)
+  without a corresponding benefit — there is no independent deployment or
+  horizontal scaling need yet.
+- Direct calls are trivially debuggable with normal stack traces, which
+  mattered heavily during this phase's rapid, real-local-testing-driven
+  iteration (see the Windows subprocess and Ollama payload bugs in
+  BUILD-SUMMARY.md).
+- The `WorkflowEngine` interface (`execute_development_cycle`,
+  `execute_multi_story_cycle`) is intentionally the only place that knows
+  about agent sequencing, so migrating to an event bus later means changing
+  this one module, not every agent.
+
+## Consequences
+### Positive
+- ✓ Zero extra infrastructure to run Phase 1 (no Redis)
+- ✓ Simple, linear stack traces for debugging
+- ✓ Fast to iterate on during active development
+
+### Negative
+- ✗ Agents are not independently deployable or restartable
+- ✗ No built-in audit trail of inter-agent events (activity log in
+  `TodoList`/`StoryRun` is a partial substitute, not a full event log)
+- ✗ Migrating to ADR-001's event bus later requires rewriting the
+  orchestration layer
+
+### Neutral
+- This is expected to be revisited once more agents (Architect, Reviewer,
+  Security, UAT, DevOps) are added and independent scaling starts to matter
+
+## Alternatives Considered
+1. **Redis event bus now** - Rejected for Phase 1: too much operational
+   overhead for a single-process, 3-agent pipeline with no scaling need yet
+2. **In-process pub/sub (e.g. Python `asyncio` events)** - Rejected: would
+   add indirection without the real benefits (independent deployability,
+   durability) of a real event bus; direct calls are simpler for the same
+   guarantees
+
+## Related Decisions
+- ADR-001: Event-Driven Architecture (the target this diverges from)
+- ADR-007: In-Memory Stores Instead of Postgres/Neo4j for Phase 1
+
+## Implementation Notes
+When migrating to an event bus, `WorkflowEngine.execute_development_cycle()`
+and `execute_multi_story_cycle()` are the only methods that need to become
+event publishers/subscribers — agent method signatures themselves would not
+need to change since they already take/return plain data (`TodoList`,
+`TodoItem`, etc.).
+
+---
+
+## ADR-007: In-Memory Stores Instead of Postgres/Neo4j for Phase 1
+
+## Status
+ACCEPTED
+
+## Context
+The target Knowledge Fabric (ADR-003, SAS §7) specifies PostgreSQL, Neo4j,
+and a vector database for persistence. Phase 1 needs conversation history,
+todo/story-run tracking, and a code execution workspace, but has no
+multi-process or durability requirement yet — the whole app is a single
+`uvicorn` process.
+
+## Decision
+**Phase 1 uses in-memory Python data structures for all Knowledge Fabric
+stores** (`ConversationMemory`, `TodoStore`, `StoryRunStore`, the
+NetworkX-backed graph, the in-memory vector store), and the OS temp
+directory (`tempfile.gettempdir()/korame-workspace/`) for the Developer/
+Testing agents' shared code sandbox, instead of any database.
+
+## Rationale
+- No requirement yet for persistence across process restarts, multi-instance
+  deployment, or query patterns that need a real database's indexing.
+- Keeps Phase 1's dependency footprint to Python + Ollama, which matters in
+  environments with restricted network access (this workspace is behind a
+  corporate proxy that blocks many package installs).
+- The sandbox specifically must NOT live inside the repository, because
+  `uvicorn --reload`'s file watcher would pick up generated code as a
+  source change and restart the app mid-workflow — using the OS temp
+  directory sidesteps this entirely.
+
+## Consequences
+### Positive
+- ✓ No database setup required to run or test Phase 1
+- ✓ Fast (no network round-trip for reads/writes)
+- ✓ Sandbox isolation from the app's own file-watcher
+
+### Negative
+- ✗ All state is lost on process restart (conversations, todo lists, story
+  runs)
+- ✗ No support for multiple backend instances sharing state
+- ✗ No graph/vector-search query power beyond what NetworkX/the in-memory
+  store provide
+
+### Neutral
+- The graph and vector store modules already exist behind interfaces that
+  a real backend (Neo4j, Qdrant/Pinecone) can implement later without
+  changing calling code
+
+## Alternatives Considered
+1. **SQLite file-based persistence** - Considered as a lightweight middle
+   ground; rejected for Phase 1 only because nothing yet requires surviving
+   a restart, and it would add migration/schema-management work with no
+   immediate payoff
+2. **Full Postgres/Neo4j per SAS §7** - Rejected for Phase 1: requires
+   Docker/service setup this environment cannot reliably provide (proxy
+   restrictions), and is unnecessary before multi-instance or durability
+   needs actually arise
+
+## Related Decisions
+- ADR-003: Immutable Artifact Versioning (target persistence model)
+- ADR-006: Direct Method Calls Instead of Event Bus for Phase 1
+
+## Implementation Notes
+Anyone restarting the backend process loses all conversations, todo lists,
+and story runs — this is expected in Phase 1, not a bug.
+
+---
+
+## ADR-008: GitHub REST API Instead of Git CLI
+
+## Status
+ACCEPTED
+
+## Context
+The Developer Agent needs to publish completed, tested code as a real pull
+request. The two obvious approaches are shelling out to the `git` CLI
+(clone, branch, commit, push) or calling GitHub's REST API directly.
+
+## Decision
+**`GitHubService` uses GitHub's REST API** (branch creation, file commits via
+the Contents API, PR opening) via `httpx`, not the `git` CLI or a local
+clone.
+
+## Rationale
+- No local git repository/clone/working tree is needed on the machine
+  running the backend — the sandbox's in-memory/on-disk file contents are
+  uploaded directly as file blobs via API calls.
+- Avoids credential-in-URL or SSH-key management that shelling out to `git`
+  would require; a single `GITHUB_TOKEN` bearer token is sufficient.
+- Easier to make this gracefully optional: when `GITHUB_TOKEN`/`GITHUB_REPO`
+  aren't configured, `GitHubService` simply reports "not configured" instead
+  of failing a `git` subprocess call.
+
+## Consequences
+### Positive
+- ✓ No local git installation or repo clone required
+- ✓ Simple, single-token auth
+- ✓ Clean "not configured" fallback path (no partial git state to clean up)
+
+### Negative
+- ✗ Limited to what the Contents API supports well (works fine for Phase
+  1's per-story file sets; would need the Git Data API for very large
+  changesets)
+- ✗ One API call per file rather than a single atomic commit of a working
+  tree
+
+## Alternatives Considered
+1. **Git CLI with a local clone** - Rejected: requires git installed, a
+   writable clone, and credential management (SSH key or token-in-URL);
+   more moving parts for Phase 1's needs
+2. **GitHub Git Data API (tree/blob/commit objects)** - Considered for
+   atomic multi-file commits; deferred as unnecessary complexity while
+   Phase 1's PRs contain a handful of files per story
+
+## Related Decisions
+- ADR-006: Direct Method Calls Instead of Event Bus for Phase 1
+
+## Implementation Notes
+Gated behind `GITHUB_TOKEN` / `GITHUB_REPO` / `GITHUB_BASE_BRANCH` settings;
+see BUILD-SUMMARY.md Quick Start for setup.
+
+---
+
+## ADR-009: Shared Per-Story Sandbox Instead of Per-Task Isolation
+
+## Status
+ACCEPTED
+
+## Context
+Early Phase 1 testing revealed a real bug: a per-task, isolated sandbox
+(created and destroyed for every individual task) combined with generic
+filenames (always `implementation.py`/`implementation.html`) meant that
+when the Developer Agent broke a story into multiple tasks (e.g. multiple
+pages of a static site), each task's output overwrote the previous one, and
+the final pull request only ever contained the last task's file.
+
+## Decision
+**A single `Sandbox` is created once per story** (in
+`WorkflowEngine.execute_development_cycle()`, wrapped in a `finally:` for
+guaranteed cleanup), shared across every task in that story's todo list.
+Each task is given a stable, distinct filename via
+`DeveloperAgent.derive_filename()`, locked in on first attempt and reused
+across retries of the same task. `create_pull_request()` reads the PR's
+file contents from the actual sandbox directory on disk (via `os.walk`)
+rather than reconstructing them from in-memory task state.
+
+## Rationale
+- Multiple tasks need to coexist as separate files in one shared workspace
+  to produce a coherent multi-file deliverable (e.g. a multi-page site).
+- Building the PR from the real directory contents (not in-memory
+  reconstruction) guarantees the PR matches exactly what was tested,
+  eliminating an entire class of "PR doesn't match what was tested" bugs.
+- Testing was also changed to target only the current task's specific test
+  file (`Sandbox.run_pytest(target=...)`) rather than the whole shared
+  directory, so a later task's retry doesn't re-run and get confused by
+  earlier, already-passing tasks' tests — at the accepted cost of losing
+  automatic cross-task regression detection (justified since tasks are
+  designed to be independently testable per the Developer/Testing prompts).
+
+## Consequences
+### Positive
+- ✓ Multi-task stories produce a correct, complete multi-file PR
+- ✓ PR content is guaranteed to match what was actually tested
+- ✓ Faster, more clearly-attributed test feedback per task
+
+### Negative
+- ✗ No automatic cross-task regression detection (a later task's changes
+  could silently break an earlier task's file without a full-directory
+  test run catching it)
+- ✗ Sandbox cleanup must be carefully sequenced (once per story, not per
+  task) — handled via a single `finally:` block in
+  `execute_development_cycle()`
+
+### Neutral
+- This trade-off should be revisited if stories start requiring genuine
+  cross-file integration testing
+
+## Alternatives Considered
+1. **Per-task isolated sandboxes (original approach)** - Rejected: this was
+   the actual root cause of the multi-page-site bug; discarded after real
+   local testing surfaced it
+2. **Whole-directory test run on every task** - Rejected per the user's
+   direct question during this session: slower, and conflates a task's own
+   failure with unrelated earlier tasks' tests
+
+## Related Decisions
+- ADR-006: Direct Method Calls Instead of Event Bus for Phase 1
+
+## Implementation Notes
+`Sandbox.run_pytest()`'s `target` parameter must be the specific
+`test_<file>.py` name for task-level testing; omit it only for the rare
+whole-directory case.
+
+---
+
 ## How to Add New ADRs
 
 1. Copy the template above
@@ -529,4 +803,8 @@ For actual emergencies (security breach, data loss, service down):
 - ADR-003: Immutable Artifact Versioning
 - ADR-004: Hybrid Local/Azure Execution
 - ADR-005: Quality Gates Cannot Be Skipped
+- ADR-006: Direct Method Calls Instead of Event Bus for Phase 1
+- ADR-007: In-Memory Stores Instead of Postgres/Neo4j for Phase 1
+- ADR-008: GitHub REST API Instead of Git CLI
+- ADR-009: Shared Per-Story Sandbox Instead of Per-Task Isolation
 

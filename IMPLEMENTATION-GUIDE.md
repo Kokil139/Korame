@@ -57,6 +57,43 @@ All agents communicate via **Event Bus** (Redis). The **Workflow Orchestrator** 
 
 ## Part 2: Development Environment Setup
 
+> ### 📌 Phase 1 Actual Setup (What Really Works Today)
+>
+> The steps below (Docker Compose, Redis, PostgreSQL) describe the **target
+> environment for later phases**. They do not apply to the repository as it
+> exists today. **Phase 1 requires only:**
+>
+> ```bash
+> # 1. Clone and enter the repo
+> git clone <korame-repo>
+> cd korame
+>
+> # 2. Python virtual environment + install
+> python -m venv venv
+> venv\Scripts\activate          # Windows
+> pip install -e .
+>
+> # 3. Ollama (local model runtime) - no Docker/Postgres/Redis needed
+> ollama serve
+> ollama pull qwen2.5-coder:7b
+>
+> # 4. Run the backend
+> uvicorn app.main:app --reload
+>
+> # 5. (Optional) Frontend
+> cd frontend
+> npm install
+> npm run dev
+>
+> # 6. (Optional) .env: GITHUB_TOKEN / GITHUB_REPO / GITHUB_BASE_BRANCH
+> #    to let the Developer Agent open real pull requests
+> ```
+>
+> No Docker, Redis, or PostgreSQL is required to run Phase 1. See
+> **[BUILD-SUMMARY.md](BUILD-SUMMARY.md)** for the complete, accurate setup
+> and usage guide. The rest of this Part 2 section is the target setup for
+> the full multi-service architecture once later phases are implemented.
+
 ### Prerequisites
 
 - Python 3.11+

@@ -34,14 +34,25 @@ korame/
 │   │   ├── 📁 base/                       🔧 Base utilities
 │   │   │   ├── __init__.py
 │   │   │   └── agent.py                   BaseAgent (common logic)
-│   │   └── 📁 rte/                        📝 RTE Agent (example)
+│   │   ├── 📁 rte/                        📝 RTE Agent
+│   │   │   ├── __init__.py
+│   │   │   └── agent.py                   RTEAgent (clarification, splitting, suggestions)
+│   │   ├── 📁 developer/                  🛠️  Developer Agent
+│   │   │   ├── __init__.py
+│   │   │   └── agent.py                   DeveloperAgent (task breakdown, implement, PR)
+│   │   └── 📁 testing/                    🧪 Testing Agent
 │   │       ├── __init__.py
-│   │       └── agent.py                   RTEAgent (working)
+│   │       ├── agent.py                   TestingAgent (test generation + execution)
+│   │       └── sandbox.py                 Sandbox (isolated pytest execution)
+│   │
+│   ├── 📁 integrations/                   🔗 EXTERNAL SERVICES
+│   │   ├── __init__.py
+│   │   └── github_service.py              🐙 GitHubService (real REST API PR creation)
 │   │
 │   ├── 📁 providers/                      🧠 MODEL PROVIDERS
 │   │   ├── __init__.py
-│   │   ├── ollama.py                      🟠 OllamaProvider (local LLM)
-│   │   └── litellm.py                     🔵 LiteLLMProvider (100+ models)
+│   │   ├── ollama.py                      🟠 OllamaProvider (direct Ollama HTTP API)
+│   │   └── litellm.py                     ⚪ Deprecated stub (raises ImportError)
 │   │
 │   ├── 📁 router/                         🔀 ROUTING LOGIC
 │   │   ├── __init__.py
@@ -60,6 +71,9 @@ korame/
 │   │   │   ├── agent_memory.py            👤 Agent memory management
 │   │   │   ├── session.py                 🔐 Session tracking
 │   │   │   └── working.py                 📝 Working memory
+│   │   ├── 📁 todos/                      ✅ DEV/TEST WORKFLOW TRACKING
+│   │   │   ├── __init__.py
+│   │   │   └── todo_store.py              📋 TodoItem/TodoList/TodoStore + StoryRun/StoryRunStore
 │   │   ├── 📁 artifacts/                  📦 STORED ARTIFACTS
 │   │   │   ├── __init__.py
 │   │   │   └── artifacts.py               📎 Artifact storage & retrieval
@@ -81,15 +95,18 @@ korame/
 │   │
 │   ├── 📁 api/                            🌐 REST API
 │   │   ├── __init__.py
-│   │   └── chat.py                        📡 Endpoints: /chat, /health, /conversations
+│   │   ├── chat.py                        📡 Endpoints: /chat, /health, /conversations
+│   │   └── development.py                 📡 Endpoints: /develop, /todos/{id}, /develop-stories, /story-runs/{id}
 │   │
 │   ├── 📁 config/                         ⚙️  CONFIGURATION
 │   │   ├── __init__.py
-│   │   └── settings.py                    🔧 Pydantic settings (from .env)
+│   │   └── settings.py                    🔧 Pydantic settings (from .env, incl. GitHub config)
 │   │
 │   ├── 📁 prompts/                        📝 AGENT PROMPTS
 │   │   ├── __init__.py
-│   │   └── rte.md                         RTE system prompt
+│   │   ├── rte.md                         RTE system prompt (clarification, splitting, revision)
+│   │   ├── developer.md                   Developer system prompt (task breakdown, Python/HTML)
+│   │   └── testing.md                     Testing system prompt (import-based vs. text-assertion)
 │   │
 │   ├── 📁 models/                         📊 DATA MODELS
 │   │   └── __init__.py                    (reserved for expansion)
@@ -116,7 +133,11 @@ korame/
 │       │   └── AppRoutes.tsx              "/" welcome + "/rte" chat page routing
 │       │
 │       ├── 📁 pages/
-│       │   ├── RTEPage.tsx                📝 Business requirement chat page (built)
+│       │   ├── HomePage.tsx               🏠 Landing page (animated K logo)
+│       │   ├── RTEPage.tsx                📝 Business requirement chat + conversation sidebar
+│       │   ├── RequirementsPage.tsx       📚 Library of finalized stories
+│       │   ├── WorkflowPage.tsx           📊 Live single-story Dev/Test workflow view
+│       │   ├── StoryRunPage.tsx           📊 Live multi-story sequential workflow view
 │       │   ├── DashboardPage.tsx          (placeholder - reserved for V2)
 │       │   ├── ProjectPage.tsx            (placeholder - reserved for V2)
 │       │   └── SettingsPage.tsx           (placeholder - reserved for V2)
@@ -125,15 +146,19 @@ korame/
 │       │   └── useChat.ts                 Hook wrapping chatStore for components
 │       │
 │       ├── 📁 store/
-│       │   ├── chatStore.ts               🗣️  Zustand store: messages, conversationId, API calls
+│       │   ├── chatStore.ts               🗣️  Zustand: messages, conversations, API calls
+│       │   ├── workflowStore.ts           📊 Zustand: single-story workflow polling
+│       │   ├── storyRunStore.ts           📊 Zustand: multi-story workflow polling
 │       │   └── projectStore.ts            (placeholder - reserved for V2)
 │       │
 │       ├── 📁 api/
 │       │   ├── client.ts                  Axios instance (baseURL, 120s timeout)
-│       │   └── chatApi.ts                 submitBusinessRequirement(), fetchConversationHistory()
+│       │   ├── chatApi.ts                 submitBusinessRequirement(), listConversations()
+│       │   └── developmentApi.ts          startDevelopment(), getWorkflowStatus(), startStoryRun(), getStoryRunStatus()
 │       │
 │       ├── 📁 types/
-│       │   ├── chat.ts                    ChatMessage, ChatApiResponse, ConversationHistory*
+│       │   ├── chat.ts                    ChatMessage (incl. stories[]), ChatApiResponse
+│       │   ├── workflow.ts                WorkflowStatus, StoryRunStatus, WorkflowTodoItem
 │       │   └── project.ts                 (placeholder - reserved for V2)
 │       │
 │       ├── 📁 theme/
@@ -143,10 +168,11 @@ korame/
 │       │   └── constants.ts               Agent name, API routes, storage keys
 │       │
 │       └── 📁 components/
-│           ├── 📁 chat/                   💬 ChatWindow, ChatMessage, ChatInput, TypingIndicator
+│           ├── 📁 chat/                   💬 ChatWindow, ChatMessage (multi-story buttons), ChatInput, ConversationSidebar, TypingIndicator
+│           ├── 📁 workflow/               📊 AgentWorkflow (pipeline viz), TodoChecklist, ActivityLog
 │           ├── 📁 common/                 EmptyState, ErrorAlert, LoadingSpinner
-│           ├── 📁 layout/                 (placeholder - AppHeader, AppLayout, Sidebar - V2)
-│           └── 📁 project/                (placeholder - NewProjectDialog, ProjectCard, ProjectList - V2)
+│           ├── 📁 layout/                 AppHeader, Logo (animated "K")
+│           └── 📁 project/                (placeholder - reserved for V2)
 │
 │
 ├── 📁 tests/                              🧪 TEST SUITE
@@ -396,7 +422,7 @@ FastAPI (app/main.py, :8000)
     │           ├─→ Agents (app/agents/*/agent.py)
     │           │   ├─→ Model Router (app/router/model_router.py)
     │           │   │   └─→ Providers (app/providers/*.py)
-    │           │   │       └─→ LiteLLM (100+ models)
+    │           │   │       └─→ Ollama HTTP API → qwen2.5-coder:7b
     │           │   │
     │           │   └─→ Prompts (app/prompts/*.md)
     │           │
@@ -436,7 +462,8 @@ FastAPI (app/main.py, :8000)
 - [ ] Virtual environment created
 - [ ] Dependencies installed: `pip install -e ".[dev]"`
 - [ ] Ollama running: `ollama serve`
-- [ ] Model pulled: `ollama pull qwen2:7b`
+- [ ] Model pulled: `ollama pull qwen2.5-coder:7b`
+- [ ] Embedding model pulled: `ollama pull nomic-embed-text`
 
 ### When Committing
 - [ ] Code formatted: `black app/ tests/`

@@ -14,14 +14,25 @@
 ## ✅ Agents
 - ✅ `app/agents/base/agent.py` - BaseAgent (common utilities)
 - ✅ `app/agents/base/__init__.py` - Base exports
-- ✅ `app/agents/rte/agent.py` - RTEAgent (working example)
+- ✅ `app/agents/rte/agent.py` - RTEAgent (clarification, splitting, suggestions, revision)
 - ✅ `app/agents/rte/__init__.py` - RTE exports
+- ✅ `app/agents/developer/agent.py` - DeveloperAgent (task breakdown, implement, GitHub PR)
+- ✅ `app/agents/developer/__init__.py` - Developer exports
+- ✅ `app/agents/testing/agent.py` - TestingAgent (real pytest generation + execution)
+- ✅ `app/agents/testing/sandbox.py` - Sandbox (isolated, shared per-story workspace)
+- ✅ `app/agents/testing/__init__.py` - Testing exports
 - ✅ `app/agents/__init__.py` - Agent exports
 - ✅ `app/prompts/rte.md` - RTE system prompt
+- ✅ `app/prompts/developer.md` - Developer system prompt
+- ✅ `app/prompts/testing.md` - Testing system prompt
+
+## ✅ Integrations
+- ✅ `app/integrations/github_service.py` - GitHubService (real REST API PR creation)
+- ✅ `app/integrations/__init__.py` - Integration exports
 
 ## ✅ Providers
-- ✅ `app/providers/ollama.py` - OllamaProvider (local LLM)
-- ✅ `app/providers/litellm.py` - LiteLLMProvider (multi-model)
+- ✅ `app/providers/ollama.py` - OllamaProvider (direct Ollama HTTP API)
+- ✅ `app/providers/litellm.py` - Deprecated stub (raises ImportError)
 - ✅ `app/providers/__init__.py` - Provider exports
 
 ## ✅ Router
@@ -29,15 +40,21 @@
 - ✅ `app/router/__init__.py` - Router exports
 
 ## ✅ Workflow
-- ✅ `app/workflow/engine.py` - WorkflowEngine (orchestration)
+- ✅ `app/workflow/engine.py` - WorkflowEngine (single-story + multi-story Dev/Test cycles)
+- ✅ `app/workflow/graph_engine.py` - LangGraph StateGraph (implement→test→fix loop)
 - ✅ `app/workflow/__init__.py` - Workflow exports
 
+## ✅ Knowledge / Todo Tracking
+- ✅ `app/knowledge/todos/todo_store.py` - TodoItem/TodoList/TodoStore + StoryRun/StoryRunStore
+- ✅ `app/knowledge/todos/__init__.py` - Todo exports
+
 ## ✅ Memory
-- ✅ `app/memory/conversation.py` - ConversationMemory (storage)
-- ✅ `app/memory/__init__.py` - Memory exports
+- ✅ `app/knowledge/memory/conversation.py` - ConversationMemory (storage)
+- ✅ `app/knowledge/memory/__init__.py` - Memory exports
 
 ## ✅ API
 - ✅ `app/api/chat.py` - REST endpoints (/chat, /health, /conversations)
+- ✅ `app/api/development.py` - REST endpoints (/develop, /todos/{id}, /develop-stories, /story-runs/{id})
 - ✅ `app/api/__init__.py` - API exports
 
 ## ✅ Config
@@ -117,7 +134,7 @@ pytest tests/test_kernel.py -v
 # Make sure Ollama is running
 ollama serve
 # In another terminal, pull model
-ollama pull qwen2:7b
+ollama pull qwen2.5-coder:7b
 ```
 
 ### Step 5: Start Korame
@@ -184,7 +201,7 @@ korame/
 ├── app/                           ✅ Main application
 │   ├── kernel/                    ✅ Core foundation (4 files)
 │   ├── agents/                    ✅ Agent implementations (base + rte)
-│   ├── providers/                 ✅ Model providers (ollama + litellm)
+│   ├── providers/                 ✅ Model providers (OllamaProvider + deprecated litellm stub)
 │   ├── router/                    ✅ Model routing
 │   ├── workflow/                  ✅ Orchestration engine
 │   ├── memory/                    ✅ Conversation storage
@@ -220,7 +237,7 @@ korame/
 
 3. ✅ **Provider Abstraction**
    - Ollama (local LLM)
-   - LiteLLM (100+ models)
+   - OllamaProvider (direct HTTP)
    - Swap providers without code changes
 
 4. ✅ **Model Routing**
@@ -287,11 +304,11 @@ DEBUG=False
 
 # Ollama
 OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2:7b
+OLLAMA_MODEL=qwen2.5-coder:7b
+OLLAMA_EMBED_MODEL=nomic-embed-text
 
 # Logging
 LOG_LEVEL=INFO
-LITELLM_LOG=INFO
 ```
 
 All configurable from environment variables, no code changes needed.
@@ -305,7 +322,10 @@ All configurable from environment variables, no code changes needed.
 - uvicorn
 - pydantic
 - pydantic-settings
-- litellm
+- litellm *(removed — replaced by direct Ollama HTTP)
+- langgraph
+- llama-index-core
+- llama-index-embeddings-ollama
 - httpx
 - python-dotenv
 - rich
@@ -329,7 +349,7 @@ All configurable from environment variables, no code changes needed.
 1. ✅ **Kernel-First** - Core interfaces before features
 2. ✅ **Loose Coupling** - Agents independent, registry mediates
 3. ✅ **High Cohesion** - Each component has single responsibility
-4. ✅ **Provider Abstraction** - LiteLLM hides provider details
+4. ✅ **Provider Abstraction** - `Provider` interface hides provider details; OllamaProvider is the default
 5. ✅ **Configuration Over Code** - .env file controls everything
 6. ✅ **Type Safety** - Python 3.12+ with type hints
 7. ✅ **Testability** - All components independently testable
@@ -394,7 +414,7 @@ All configurable from environment variables, no code changes needed.
 You have:
 - ✅ Kernel foundation (stable, extensible)
 - ✅ Working RTE agent
-- ✅ Model abstraction (Ollama + LiteLLM)
+- ✅ Model abstraction (OllamaProvider, LangGraph orchestration)
 - ✅ REST API (FastAPI)
 - ✅ Test suite (12 tests)
 - ✅ Comprehensive docs

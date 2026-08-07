@@ -6,6 +6,30 @@
 
 ---
 
+> ## 📌 Phase 1 Status (Read This First)
+>
+> This README describes Korame's **full long-term vision** (8 agents, an
+> event bus, Postgres/Neo4j, Azure GPU routing). That vision has **not** been
+> built yet — it's the north star, not the current state.
+>
+> **What's actually implemented and running today ("Phase 1")** is a smaller,
+> proven pipeline:
+>
+> - **RTE Agent** — gathers requirements via multi-turn clarification, writes
+>   user stories, splits complex requirements into multiple stories
+> - **Developer Agent** — breaks a story into tasks (only when genuinely
+>   complex), implements each task's code, opens a real GitHub pull request
+> - **Testing Agent** — generates and actually executes real pytest tests
+>   per task, retries with feedback on failure
+> - Direct method calls between agents (no event bus yet), in-memory/temp-file
+>   storage (no Postgres/Neo4j yet), a live workflow-visualization frontend
+>
+> **See [BUILD-SUMMARY.md](BUILD-SUMMARY.md) for the full, accurate picture of
+> what's implemented, how it works, and how to run it.** Everything else in
+> this README is the aspirational target architecture for later phases.
+
+---
+
 ## What is Korame?
 
 Korame is an **AI-native Software Delivery Organization** that transforms business requirements into production-ready software through a coordinated system of specialized AI agents, unified by a Workflow Orchestrator and supported by a shared Knowledge Fabric.

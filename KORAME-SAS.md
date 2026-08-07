@@ -7,6 +7,27 @@
 
 ---
 
+> ## 📌 Phase 1 Implementation Status
+>
+> This document is the **target architecture spec** for Korame's full vision.
+> The system actually implemented today ("Phase 1") is a deliberately smaller
+> subset, with several documented divergences from this spec:
+>
+> | This Spec Describes | Phase 1 Actually Uses |
+> |---|---|
+> | Event Bus (Redis), agents publish/subscribe | Direct method calls between agents via `WorkflowEngine` |
+> | 8 agents (RTE, Architect, Developer, Reviewer, Security, Testing, UAT, DevOps) | 3 agents: RTE, Developer, Testing |
+> | PostgreSQL + Neo4j + vector DB | In-memory stores + OS temp-dir sandbox (see `app/knowledge/`) |
+> | Model Router across Ollama/Azure GPU/Claude/GPT-4 | Single local Ollama model (`qwen2.5-coder:7b`) for all agents |
+> | Formal 12-state artifact lifecycle & quality gates | Simple per-task status (pending/in_progress/testing/failed/complete) + retry loop |
+>
+> **See [BUILD-SUMMARY.md](BUILD-SUMMARY.md)** for what's actually built and
+> running, and **[docs-ADRs.md](docs-ADRs.md)** for the specific ADRs
+> documenting why Phase 1 diverges from this spec. The rest of this document
+> remains the intended design for later phases.
+
+---
+
 ## Table of Contents
 
 1. [Vision & Goals](#1-vision--goals)

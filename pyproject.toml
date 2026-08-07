@@ -29,6 +29,12 @@ dependencies = [
     "httpx>=0.25.0",
     "rich>=13.7.0",
     "python-dotenv>=1.0.0",
+    # LangGraph — state-machine workflow orchestration for the dev/test loop
+    "langgraph>=0.2",
+    # LlamaIndex — local Ollama embeddings + vector store for the knowledge fabric
+    "llama-index-core>=0.11",
+    "llama-index-llms-ollama>=0.3",
+    "llama-index-embeddings-ollama>=0.3",
 ]
 
 [project.optional-dependencies]
