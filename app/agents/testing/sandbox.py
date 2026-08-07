@@ -30,6 +30,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from typing import Optional
 
 _WORKSPACE_ROOT = os.path.join(tempfile.gettempdir(), "korame-workspace")
 
@@ -62,11 +63,17 @@ class Sandbox:
             f.write(content)
         return full_path
 
-    async def run_pytest(self, timeout: int = 30) -> TestExecutionResult:
+    async def run_pytest(self, target: Optional[str] = None, timeout: int = 30) -> TestExecutionResult:
         """
-        Run pytest against everything in this sandbox and capture the result.
+        Run pytest against a specific target within this sandbox, or
+        everything in it if no target is given.
 
         Args:
+            target: A specific test file (relative to the sandbox root) to
+                run - e.g. "test_contact_form.py" - so only the task
+                currently being graded is run, rather than re-running every
+                other already-passing task's tests on every single retry.
+                Omit to run the whole directory (e.g. for a final sanity pass).
             timeout: Maximum seconds to allow the test run before killing it
 
         Returns:
@@ -76,7 +83,7 @@ class Sandbox:
 
         def _run() -> subprocess.CompletedProcess:
             return subprocess.run(
-                [sys.executable, "-m", "pytest", ".", "-q", "--tb=short"],
+                [sys.executable, "-m", "pytest", target or ".", "-q", "--tb=short"],
                 cwd=self.path,
                 capture_output=True,
                 text=True,

@@ -24,10 +24,10 @@ class OllamaProvider(Provider):
     """Provider for Ollama models using the Ollama HTTP API.
 
     Example usage: Ollama running locally at http://localhost:11434
-    with model name like "qwen3:8b".
+    with model name like "qwen2.5-coder:7b".
     """
 
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3:8b"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen2.5-coder:7b"):
         super().__init__("ollama")
         self.base_url = base_url.rstrip("/")
         self.model = model

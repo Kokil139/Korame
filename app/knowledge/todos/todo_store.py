@@ -35,6 +35,11 @@ class TodoItem:
     # "python" (default) or "html" - detected from the generated code so the
     # Testing Agent knows whether to `import` it or check it as a page.
     file_type: str = "python"
+    # This task's own filename within the story's shared workspace (e.g.
+    # "contact_form.py" or "index.html") - lets multiple tasks coexist as
+    # separate files in the same directory instead of overwriting one generic
+    # "implementation.py"/"implementation.html" every time.
+    filename: str = ""
     test_code: str = ""
     test_output: str = ""
     attempts: int = 0

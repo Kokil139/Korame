@@ -11,7 +11,9 @@ from app.kernel.models import Task, Response, Context
 from app.kernel.registry import Registry
 from app.router.model_router import ModelRouter
 from app.knowledge.todos import TodoStatus
+from app.agents.testing.sandbox import Sandbox
 from app.utils import logger
+from app.workflow.graph_engine import build_dev_test_graph, DevTestState
 
 
 class WorkflowEngine:
@@ -197,73 +199,37 @@ class WorkflowEngine:
             todo_list.error = "Developer/Testing agents not registered"
             return {"status": "error", "error": todo_list.error}
 
+        # One shared workspace for the WHOLE story, not one per task: every
+        # task's file lands here and stays here (not wiped the moment its own
+        # test finishes), so a multi-file deliverable (e.g. every page of a
+        # multi-page site) accumulates into one cohesive project, later
+        # tasks' tests can regression-test earlier tasks' files too, and the
+        # final PR reflects everything actually built - not just whichever
+        # task happened to write to a shared generic filename last.
+        sandbox = Sandbox(todo_list.id)
         try:
             await developer.populate_todo_list(todo_list, story)
 
-            for item in todo_list.items:
-                item.status = TodoStatus.IN_PROGRESS
-                test_feedback: Optional[str] = None
-
-                for attempt in range(1, max_attempts_per_item + 1):
-                    item.attempts = attempt
-                    todo_list.current_agent = "developer"
-                    todo_list.current_activity = (
-                        f"Implementing: {item.title}"
-                        if attempt == 1
-                        else f"Fixing: {item.title} (attempt {attempt})"
-                    )
-                    item.code = await developer.implement_item(story, item, test_feedback)
-                    item.file_type = developer.detect_file_type(item.code)
-                    item.status = TodoStatus.TESTING
-
-                    todo_list.current_agent = "testing"
-                    todo_list.current_activity = f"Testing: {item.title}"
-                    test_result = await tester.run_tests(
-                        run_id=f"{todo_list.id}-{item.id}",
-                        task_title=item.title,
-                        code=item.code,
-                        file_type=item.file_type,
-                    )
-                    item.test_code = test_result["test_code"]
-                    item.test_output = test_result["output"]
-
-                    if test_result["passed"]:
-                        item.status = TodoStatus.COMPLETE
-                        logger.info(f"Task '{item.title}' passed testing on attempt {attempt}")
-                        break
-
-                    item.status = TodoStatus.FAILED
-                    # Nothing else logs the actual generated code or test
-                    # failure reason anywhere - without this, a repeatedly
-                    # failing task looks like silent "no progress" with only
-                    # the Ollama call-timing logs to go on. This is the
-                    # concrete evidence needed to tell a genuine code/test
-                    # quality problem apart from an infrastructure one.
-                    logger.warning(
-                        f"Task '{item.title}' failed testing (attempt {attempt}/{max_attempts_per_item}):\n"
-                        f"--- Generated code ---\n{item.code}\n"
-                        f"--- Test code ---\n{item.test_code}\n"
-                        f"--- Test output ---\n{test_result['output']}"
-                    )
-                    test_feedback = test_result["output"]
-
-                if item.status != TodoStatus.COMPLETE:
-                    # Tasks are sequential and later ones may depend on this
-                    # one - don't burn more time/GPU attempting further tasks
-                    # on top of one that's still broken. Stop here and report
-                    # clearly which task is blocked, instead of silently
-                    # moving on and ending up with a partial, untested set of
-                    # "completed" tasks around a gap.
-                    todo_list.current_activity = (
-                        f"Blocked on: {item.title} (still failing after {item.attempts} attempt(s))"
-                    )
-                    break
+            if todo_list.items:
+                # LangGraph state-machine drives the implement → test → fix
+                # cycle for each item, replacing the hand-rolled nested loops.
+                dev_test_graph = build_dev_test_graph(
+                    todo_list=todo_list,
+                    story=story,
+                    max_attempts=max_attempts_per_item,
+                    sandbox=sandbox,
+                    developer=developer,
+                    tester=tester,
+                )
+                await dev_test_graph.ainvoke(
+                    DevTestState(item_index=0, attempt=0, test_feedback=None, stop=False)
+                )
 
             pull_request = None
             if todo_list.is_complete():
                 todo_list.current_agent = "developer"
                 todo_list.current_activity = "Opening pull request"
-                pull_request = await developer.create_pull_request(todo_list)
+                pull_request = await developer.create_pull_request(todo_list, sandbox)
                 todo_list.pull_request = pull_request
 
             todo_list.current_agent = "rte"
@@ -310,6 +276,12 @@ class WorkflowEngine:
             todo_list.current_agent = None
             todo_list.current_activity = f"Error: {error_message}"
             return {"status": "error", "error": error_message}
+        finally:
+            # The shared workspace only needs to survive for the duration of
+            # this one story's cycle (the PR, if any, was already built from
+            # it above) - clean it up exactly once here, regardless of
+            # whether the story succeeded, got stuck, or errored.
+            sandbox.cleanup()
 
     async def execute_multi_story_cycle(
         self,

@@ -19,7 +19,11 @@ class Settings(BaseSettings):
 
     # Ollama Configuration
     ollama_url: str = Field(default="http://localhost:11434", alias="OLLAMA_URL")
-    ollama_model: str = Field(default="qwen3:8b", alias="OLLAMA_MODEL")
+    ollama_model: str = Field(default="qwen2.5-coder:7b", alias="OLLAMA_MODEL")
+    # Dedicated embedding model for the knowledge fabric's semantic search.
+    # Must be an embedding-capable model, NOT the generative coder model.
+    # Pull once with: ollama pull nomic-embed-text
+    ollama_embed_model: str = Field(default="nomic-embed-text", alias="OLLAMA_EMBED_MODEL")
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

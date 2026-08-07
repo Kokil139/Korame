@@ -61,7 +61,13 @@ def create_app() -> FastAPI:
     # Initialize Knowledge Fabric. Its conversation_memory is used as THE
     # conversation store (single source of truth) so agents can also use the
     # fabric's search/artifact APIs against the same data.
-    knowledge_fabric = KnowledgeFabric()
+    # LlamaIndex OllamaEmbedding + SimpleVectorStore are used automatically
+    # when llama-index-embeddings-ollama is installed; falls back to
+    # DummyEmbedding + InMemoryVectorStore otherwise.
+    knowledge_fabric = KnowledgeFabric(
+        ollama_url=settings.ollama_url,
+        ollama_embed_model=settings.ollama_embed_model,
+    )
     conversation_memory = knowledge_fabric.conversation_memory
     logger.info("Initialized Knowledge Fabric")
 
@@ -79,7 +85,7 @@ def create_app() -> FastAPI:
     registry.register_agent(rte_agent)
     logger.info("Registered RTE agent")
 
-    # Developer/Testing agents share the same qwen3:8b model via model_router
+    # Developer/Testing agents share the same qwen2.5-coder:7b model via model_router
     # for now (see docs/ARCHITECTURE.md); GitHub PR creation is skipped
     # gracefully if GITHUB_TOKEN/GITHUB_REPO aren't set in .env.
     github_service = GitHubService(

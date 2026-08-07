@@ -33,12 +33,14 @@ from app.knowledge.graph import (
 )
 from app.knowledge.vector import (
     InMemoryVectorStore,
+    LlamaIndexVectorStore,
     VectorEntry
 )
 from app.knowledge.embeddings import (
     EmbeddingProvider,
     SentenceTransformersEmbedding,
     OpenAIEmbedding,
+    OllamaEmbedding,
     DummyEmbedding
 )
 from app.knowledge.search import (

@@ -33,8 +33,9 @@ pip install -e ".[dev]"
 # Terminal 1: Start Ollama
 ollama serve
 
-# Terminal 2: Pull a model (one-time)
-ollama pull qwen2:7b
+# Terminal 2: Pull models (one-time)
+ollama pull qwen2.5-coder:7b     # generative model for all agents
+ollama pull nomic-embed-text     # embedding model for semantic search
 ```
 
 ## Step 3: Start Korame (1 minute)
@@ -120,16 +121,18 @@ bash scripts/quality-check.sh
 korame/
 ├── app/
 │   ├── kernel/          # Core interfaces
-│   ├── agents/          # Agent implementations (RTE)
+│   ├── agents/          # Agent implementations (RTE, Developer, Testing)
+│   ├── integrations/    # GitHub REST API integration
 │   ├── providers/       # Model providers (Ollama)
 │   ├── router/          # Task routing
-│   ├── workflow/        # Orchestration
-│   ├── memory/          # Conversation storage
-│   ├── api/             # REST endpoints
+│   ├── workflow/        # Orchestration (single-story + multi-story cycles)
+│   ├── knowledge/       # Memory, todos (Dev/Test tracking), search, artifacts
+│   ├── api/             # REST endpoints (chat + development workflow)
 │   ├── config/          # Configuration
 │   ├── prompts/         # Agent prompts
 │   ├── utils/           # Utilities
 │   └── main.py          # FastAPI app
+├── frontend/            # React + TypeScript SPA (chat, requirements library, live workflow views)
 ├── tests/               # Test suite
 ├── docs/                # Documentation
 └── scripts/             # Helper scripts
@@ -171,7 +174,8 @@ korame/
 - Check: `pytest tests/test_workflow.py -v` (needs Ollama)
 
 ### Model not found
-- Pull it: `ollama pull qwen2:7b`
+- Pull generative model: `ollama pull qwen2.5-coder:7b`
+- Pull embedding model: `ollama pull nomic-embed-text`
 - Change `.env`: `OLLAMA_MODEL=<model-name>`
 
 ## Documentation

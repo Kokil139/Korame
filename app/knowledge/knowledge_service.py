@@ -30,7 +30,7 @@ class KnowledgeFabric:
     - Session memory (session-level context)
     - Working memory (temporary computation)
     - Knowledge graph (entity relationships)
-    - Vector store (embeddings for RAG)
+    - Vector store (embeddings for RAG, backed by LlamaIndex when available)
     - Search (full-text, semantic, hybrid)
     - Artifact store (software engineering artifacts)
     """
@@ -38,14 +38,23 @@ class KnowledgeFabric:
     def __init__(
         self,
         embedding_provider: Optional[EmbeddingProvider] = None,
-        vector_dimension: int = 768
+        vector_dimension: int = 768,
+        ollama_url: str = "http://localhost:11434",
+        ollama_embed_model: str = "nomic-embed-text",
     ):
         """
         Initialize the knowledge fabric.
 
         Args:
-            embedding_provider: Custom embedding provider (defaults to DummyEmbedding)
-            vector_dimension: Dimension of embeddings
+            embedding_provider: Custom embedding provider.  When *None* (the
+                default) the fabric tries to use ``OllamaEmbedding`` backed by
+                the local Ollama server (requires ``llama-index-embeddings-ollama``
+                and ``ollama pull nomic-embed-text``).  Falls back to
+                ``DummyEmbedding`` (random vectors) if the package is absent.
+            vector_dimension: Embedding dimension (must match the chosen model).
+            ollama_url: Base URL of the local Ollama server.
+            ollama_embed_model: Ollama model name used for embeddings.  Must be
+                a dedicated embedding model, e.g. ``nomic-embed-text``.
         """
         # Memory systems
         self.conversation_memory = ConversationMemory()
@@ -56,11 +65,22 @@ class KnowledgeFabric:
         # Graph
         self.graph = NetworkXGraph()
 
-        # Vector store
-        self.vector_store = InMemoryVectorStore(vector_dimension=vector_dimension)
-
-        # Embeddings
-        self.embedding_provider = embedding_provider or DummyEmbedding(dimension=vector_dimension)
+        # Vector store + embeddings — prefer LlamaIndex components when installed
+        if embedding_provider is not None:
+            self.embedding_provider = embedding_provider
+            self.vector_store = InMemoryVectorStore(vector_dimension=vector_dimension)
+        else:
+            try:
+                from app.knowledge.embeddings import OllamaEmbedding
+                from app.knowledge.vector import LlamaIndexVectorStore
+                self.embedding_provider = OllamaEmbedding(
+                    model=ollama_embed_model,
+                    base_url=ollama_url,
+                )
+                self.vector_store = LlamaIndexVectorStore(vector_dimension=vector_dimension)
+            except ImportError:
+                self.embedding_provider = DummyEmbedding(dimension=vector_dimension)
+                self.vector_store = InMemoryVectorStore(vector_dimension=vector_dimension)
 
         # Search
         self.full_text_search = FullTextSearch()
