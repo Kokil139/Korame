@@ -48,6 +48,9 @@ dev = [
     "isort>=5.13.0",
 ]
 
+[tool.setuptools]
+packages = ["app"]
+
 [tool.black]
 line-length = 100
 target-version = ["py312"]
@@ -67,4 +70,3 @@ disallow_untyped_defs = false
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
-

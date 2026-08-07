@@ -19,6 +19,10 @@ Requires-Dist: pydantic-settings>=2.1.0
 Requires-Dist: httpx>=0.25.0
 Requires-Dist: rich>=13.7.0
 Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: langgraph>=0.2
+Requires-Dist: llama-index-core>=0.11
+Requires-Dist: llama-index-llms-ollama>=0.3
+Requires-Dist: llama-index-embeddings-ollama>=0.3
 Provides-Extra: dev
 Requires-Dist: pytest>=7.4.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
@@ -33,6 +37,30 @@ Requires-Dist: isort>=5.13.0; extra == "dev"
 **Version:** 1.0 (Foundation Phase)  
 **Status:** Foundation - Ready for Implementation  
 **Last Updated:** July 25, 2026
+
+---
+
+> ## 📌 Phase 1 Status (Read This First)
+>
+> This README describes Korame's **full long-term vision** (8 agents, an
+> event bus, Postgres/Neo4j, Azure GPU routing). That vision has **not** been
+> built yet — it's the north star, not the current state.
+>
+> **What's actually implemented and running today ("Phase 1")** is a smaller,
+> proven pipeline:
+>
+> - **RTE Agent** — gathers requirements via multi-turn clarification, writes
+>   user stories, splits complex requirements into multiple stories
+> - **Developer Agent** — breaks a story into tasks (only when genuinely
+>   complex), implements each task's code, opens a real GitHub pull request
+> - **Testing Agent** — generates and actually executes real pytest tests
+>   per task, retries with feedback on failure
+> - Direct method calls between agents (no event bus yet), in-memory/temp-file
+>   storage (no Postgres/Neo4j yet), a live workflow-visualization frontend
+>
+> **See [BUILD-SUMMARY.md](BUILD-SUMMARY.md) for the full, accurate picture of
+> what's implemented, how it works, and how to run it.** Everything else in
+> this README is the aspirational target architecture for later phases.
 
 ---
 
