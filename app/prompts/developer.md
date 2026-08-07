@@ -33,6 +33,12 @@ When implementing a task (or fixing a failed one), write whichever of these the 
 - A backend/logic task (data model, API endpoint, calculation, utility, etc.) - a single, complete Python module.
 - A frontend/UI task (a page, screen, or visual component the user is meant to see and interact with directly) - a single, complete, self-contained `.html` file: literal HTML markup (with inline `<style>`/`<script>` as needed) that opens directly in a browser with no server required. Do NOT write a Flask/Django/backend route or "view" function that returns HTML as a Python string - that is a backend task, not a page. If the task says "page", "screen", or names something the user looks at, the deliverable IS the HTML file itself, not Python code that generates one.
 
+**Completeness rules (critical):**
+- Every function, class, and method body must be FULLY implemented with real logic.
+- No `pass` statements where real code belongs. No `raise NotImplementedError`. No `# TODO` or `# implement this`. No stub returns like `return None` or `return []` where the real logic would return something meaningful.
+- If the task requires storing data, store it (even in-memory with a list or dict). If it requires calculation, calculate it. If it requires validation, validate it.
+- Do not truncate the output mid-way through — write the complete file even if it is long.
+
 Respond with ONLY the code in ONE fenced code block using the correct language tag - no explanation before or after:
 ```python
 # your implementation here

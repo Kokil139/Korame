@@ -126,7 +126,7 @@ class DeveloperAgent(BaseAgent):
         # web app" implies multiple pages, not one form - is a judgment call
         # that benefits from deliberation, not a format-constrained output
         # where reasoning tokens mostly just risk truncating the list.
-        result = await provider.call(prompt, temperature=0.4, max_tokens=2000, think=True)
+        result = await provider.call(prompt, temperature=0.2, max_tokens=2000, think=True)
         task_titles = [t.strip() for t in _NUMBERED_ITEM_PATTERN.findall(result) if t.strip()]
         task_titles = [_LABEL_PREFIX_PATTERN.sub("", t).strip() or t for t in task_titles]
         if not task_titles:
@@ -139,28 +139,36 @@ class DeveloperAgent(BaseAgent):
         ]
         todo_list.status = "running"
 
-    async def implement_item(self, story: str, item: TodoItem, test_feedback: Optional[str] = None) -> str:
+    async def implement_item(self, story: str, item: TodoItem, test_feedback: Optional[str] = None, test_code: Optional[str] = None) -> str:
         """
         Generate (or revise, if test_feedback is given) code for a single todo item.
 
         Args:
             story: The full user story, for context
             item: The todo item being implemented
-            test_feedback: Failing test output from a previous attempt, if any
+            test_feedback: Failing pytest output from a previous attempt, if any
+            test_code: The actual test source that produced that failure, if any
 
         Returns:
-            The generated Python source code
+            The generated source code
         """
         provider = self.model_router.default_provider
         feedback_section = ""
         if test_feedback:
+            test_code_section = (
+                f"\n### Test Code That Was Run\n```python\n{test_code}\n```"
+                if test_code else ""
+            )
             feedback_section = (
                 f"\n\n## Your Previous Attempt Failed Testing\n"
-                f"Test output:\n{test_feedback}\n\n"
-                "Read the failure above carefully: identify the specific assertion "
-                "or error, understand why it happened, and make a targeted fix. "
-                "Do not rewrite the whole module from scratch unless the failure "
-                "shows the entire approach was wrong."
+                f"{test_code_section}\n"
+                f"### Pytest Output\n```\n{test_feedback}\n```\n\n"
+                "Read the failure above carefully:\n"
+                "- Identify the EXACT line in the test code that asserted something.\n"
+                "- Understand WHY your code didn't satisfy it.\n"
+                "- Make a TARGETED fix to satisfy that specific assertion.\n"
+                "- Do NOT rewrite the whole module from scratch unless the entire approach was wrong.\n"
+                "- Do NOT add fake pass-throughs or special-case the test — make the code genuinely correct."
             )
 
         prompt = (
@@ -170,12 +178,26 @@ class DeveloperAgent(BaseAgent):
             f"{feedback_section}\n\n"
             "Write a single, COMPLETE implementation that fully implements this "
             "task - a Python module for backend/logic work, or a self-contained "
-            "HTML page for a frontend/UI task (see the format rules above). Do "
-            "not truncate output or leave placeholders/TODOs. Respond with ONLY "
+            "HTML page for a frontend/UI task (see the format rules above). "
+            "Every function, class, and method must be FULLY implemented - "
+            "no pass statements, no TODO comments, no stub bodies, no placeholder "
+            "returns like `return None` where real logic is expected. "
+            "Do not truncate output. Respond with ONLY "
             "the code in ONE fenced code block using the correct language tag - "
             "no explanation."
         )
-        result = await provider.call(prompt, temperature=0.3, max_tokens=3000)
+        result = await provider.call(
+            prompt,
+            temperature=0.2,
+            # num_predict=-1: let the model finish the complete implementation
+            # naturally (EOS) rather than cutting it off at a token cap.
+            # num_ctx=16384: generous context so prompt + full code response
+            # fit comfortably within the 32k native window of both models.
+            # timeout=600: complex implementations on CPU can take 5-10 min.
+            max_tokens=-1,
+            num_ctx=16384,
+            timeout=600,
+        )
         return self._extract_code(result)
 
     async def create_pull_request(self, todo_list: TodoList, sandbox: Optional[Any] = None) -> dict[str, Any]:

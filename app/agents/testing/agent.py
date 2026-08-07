@@ -123,7 +123,15 @@ class TestingAgent(BaseAgent):
             f"{implementation_section}"
             f"{strategy}{error_section} Respond with ONLY the test code in a fenced Python code block."
         )
-        result = await provider.call(prompt, temperature=0.3, max_tokens=1500)
+        result = await provider.call(
+            prompt,
+            temperature=0.2,
+            # Same rationale as implement_item: let the model write the
+            # complete test file without being truncated mid-function.
+            max_tokens=-1,
+            num_ctx=16384,
+            timeout=480,
+        )
         return self._extract_code(result)
 
     async def run_tests(

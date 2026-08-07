@@ -222,7 +222,7 @@ class WorkflowEngine:
                     tester=tester,
                 )
                 await dev_test_graph.ainvoke(
-                    DevTestState(item_index=0, attempt=0, test_feedback=None, stop=False)
+                    DevTestState(item_index=0, attempt=0, test_feedback=None, test_code=None, stop=False)
                 )
 
             pull_request = None

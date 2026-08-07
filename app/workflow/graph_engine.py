@@ -33,7 +33,8 @@ class DevTestState(TypedDict):
 
     item_index: int           # index into todo_list.items currently being worked
     attempt: int              # current attempt number for this item (0 = not started)
-    test_feedback: Optional[str]  # failure output fed back to the developer on retry
+    test_feedback: Optional[str]  # pytest stdout/stderr from the last failed run
+    test_code: Optional[str]      # the actual test source that produced that failure
     stop: bool                # set True by exhausted_node to signal the loop is blocked
 
 
@@ -84,7 +85,9 @@ def build_dev_test_graph(
             else f"Fixing: {item.title} (attempt {new_attempt})"
         )
 
-        item.code = await developer.implement_item(story, item, state["test_feedback"])
+        item.code = await developer.implement_item(
+            story, item, state["test_feedback"], state["test_code"]
+        )
         item.file_type = developer.detect_file_type(item.code)
         if not item.filename:
             item.filename = developer.derive_filename(item.title, item.file_type)
@@ -114,7 +117,7 @@ def build_dev_test_graph(
         if test_result["passed"]:
             item.status = TodoStatus.COMPLETE
             logger.info(f"Task '{item.title}' passed testing on attempt {attempt}")
-            return {"test_feedback": None}
+            return {"test_feedback": None, "test_code": None}
 
         item.status = TodoStatus.FAILED
         logger.warning(
@@ -123,11 +126,11 @@ def build_dev_test_graph(
             f"--- Test code ---\n{item.test_code}\n"
             f"--- Test output ---\n{test_result['output']}"
         )
-        return {"test_feedback": test_result["output"]}
+        return {"test_feedback": test_result["output"], "test_code": test_result.get("test_code", "")}
 
     async def advance_node(state: DevTestState) -> dict:
         """Move to the next item; reset per-item state."""
-        return {"item_index": state["item_index"] + 1, "attempt": 0, "test_feedback": None}
+        return {"item_index": state["item_index"] + 1, "attempt": 0, "test_feedback": None, "test_code": None}
 
     async def exhausted_node(state: DevTestState) -> dict:
         """All retries used up — mark the loop as blocked and stop."""

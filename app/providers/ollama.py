@@ -57,17 +57,18 @@ class OllamaProvider(Provider):
         Call the local Ollama server's /api/generate endpoint.
 
         Args:
-            prompt: Prompt text to send to Ollama
-            **kwargs: Optional generation params: temperature, max_tokens, timeout, max_retries
+            prompt: Prompt text to send to the model
+            **kwargs: Optional generation params:
+                max_tokens  – max output tokens (default -1 = no limit, model stops at EOS)
+                num_ctx     – context window size in tokens (default 8192)
+                temperature – sampling temperature (default 0.7)
+                timeout     – HTTP timeout in seconds (default 300)
+                max_retries – retries on transient failure (default 1)
+                think       – enable extended thinking for Qwen3 models (default False)
 
         Returns:
             The generated text from the model
         """
-        # Local CPU inference of an 8B model can genuinely take a few minutes
-        # for longer (code-generation) responses, and there's also model-load
-        # latency on the first call after Ollama starts or after it's been
-        # idle - 120s was too tight and surfaced as "Ollama call failed" for
-        # the Developer/Testing agents' longer generations.
         timeout = kwargs.get("timeout", 300)
         max_retries = kwargs.get("max_retries", 1)
         # Only include `think` when the caller requests it AND the model
@@ -78,17 +79,24 @@ class OllamaProvider(Provider):
         # This avoids the HTTP 400 Ollama returns when an unsupported parameter
         # is sent to a model like qwen2.5-coder:7b.
         think_requested: bool = bool(kwargs.get("think", False))
+        # num_predict=-1 tells Ollama to generate until the model emits EOS
+        # (i.e. until it naturally finishes the code block).  Setting an
+        # arbitrary cap like 4000 risks cutting off a large-but-valid response
+        # mid-way; -1 avoids that while the `timeout` kwarg provides the
+        # real safety net for runaway generations.
+        # num_ctx sets the context window (prompt + response combined).  The
+        # Ollama default is often 2048 which is far too small for code tasks
+        # where the prompt alone may be 1-2k tokens.  8192 is a safe default
+        # that fits comfortably within both qwen2.5-coder:7b and qwen3:8b's
+        # native 32k context; callers can override it via the num_ctx kwarg.
         payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
             # Non-streaming mode for simplicity
             "stream": False,
-            # Generation params belong under "options" for Ollama's /api/generate
-            # endpoint. Passing them as top-level fields is silently ignored by
-            # Ollama, so temperature/output length were never actually being
-            # honored by any agent.
             "options": {
-                "num_predict": kwargs.get("max_tokens", 2000),
+                "num_predict": kwargs.get("max_tokens", -1),
+                "num_ctx": kwargs.get("num_ctx", 8192),
                 "temperature": kwargs.get("temperature", 0.7),
             },
         }
