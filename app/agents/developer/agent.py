@@ -233,8 +233,27 @@ class DeveloperAgent(BaseAgent):
 
         if sandbox is not None:
             files: dict[str, str] = {}
-            for root, _dirs, filenames in os.walk(sandbox.path):
+            for root, dirs, filenames in os.walk(sandbox.path):
+                # Prune traversal so os.walk never descends into test-tooling
+                # directories — modifying dirs[:] in place is the os.walk idiom
+                # for preventing descent into unwanted subtrees.
+                dirs[:] = [
+                    d for d in dirs
+                    if d not in (".pytest_cache", "__pycache__", ".git", ".tox", "node_modules")
+                    and not d.startswith(".")
+                ]
                 for name in filenames:
+                    # Skip test scaffolding and compiled artefacts — only the
+                    # developer's implementation files belong in the PR.
+                    if (
+                        name.startswith("test_")     # pytest test files
+                        or name.endswith(".pyc")      # compiled bytecode
+                        or name.startswith(".")       # hidden files (.gitignore etc.)
+                        or name == "conftest.py"      # pytest config
+                        or name == "pytest.ini"
+                        or name == "setup.cfg"
+                    ):
+                        continue
                     full_path = os.path.join(root, name)
                     rel_path = os.path.relpath(full_path, sandbox.path).replace(os.sep, "/")
                     try:
