@@ -1,0 +1,53 @@
+<!-- 
+Assertion failed: 'input type="submit" value="Submit"' in html
+The previous code did not include a form element with a submit button.
+Specific change: Add a form element with an input of type "submit" and value "Submit".
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact - Milton Bottle Company</title>
+    <style>
+        body {
+            background-color: #228B22;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Contact Us</h1>
+    </header>
+    <main>
+        <section id="contact">
+            <h2>Get in Touch</h2>
+            <form action="/submit_contact_form" method="post">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required><br><br>
+                
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required><br><br>
+                
+                <label for="message">Message:</label>
+                <textarea id="message" name="message" rows="4" required></textarea><br><br>
+                
+                <input type="submit" value="Submit">
+            </form>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2023 milton bottle company. all rights reserved.</p>
+    </footer>
+</body>
+</html>
