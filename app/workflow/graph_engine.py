@@ -88,9 +88,16 @@ def build_dev_test_graph(
         item.code = await developer.implement_item(
             story, item, state["test_feedback"], state["test_code"]
         )
+        prev_file_type = item.file_type
         item.file_type = developer.detect_file_type(item.code)
-        if not item.filename:
-            item.filename = developer.derive_filename(item.title, item.file_type)
+        # Re-derive the filename when:
+        # a) it hasn't been set yet (first attempt), OR
+        # b) the file type changed between attempts (e.g. Python → HTML)
+        # This ensures the sandbox always holds the file under the name the
+        # tester will use, and that the PR ends up with e.g. "index.html"
+        # (from the page’s <title> tag) rather than the task-title slug.
+        if not item.filename or item.file_type != prev_file_type:
+            item.filename = developer.derive_filename(item.title, item.file_type, item.code)
         item.status = TodoStatus.TESTING
 
         return {"attempt": new_attempt}
