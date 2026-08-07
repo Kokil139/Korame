@@ -1,0 +1,78 @@
+<!-- 
+Assertion failed: 'our mission is to provide exceptional event management services that exceed our clients expectations.' in '<!doctype html>\n<html lang="en">\n<head>\n    <meta charset="utf-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>Event Management Company</title>\n    <style>\n        .tab-button { cursor: pointer; padding: 10px 20px; border: none; background-color: #f1f1f1; }\n        .tab-button.active { background-color: #ddd; }\n        .tab-content { display: none; padding: 20px; border: 1px solid #ccc; }\n        .tab-content.active { display: block; }\n    </style>\n</head>\n<body>\n    <div id="tabs">\n        <button class="tab-button active" onclick="showTab(event, 'home')">Home</button>\n        <button class="tab-button" onclick="showTab(event, 'contact')">Contact</button>\n        <button class="tab-button" onclick="showTab(event, 'about')">About</button>\n    </div>\n\n    <div id="content">\n        <div id="home" class="tab-content active">\n            <h1>Welcome to Our Event Management Company</h1>\n            <p>We offer a wide range of services including weddings, birthdays, and corporate events.</p>\n        </div>\n        <div id="contact" class="tab-content">\n            <h2>Contact Us</h2>\n            <p>Email: info@example.com</p>\n            <p>Phone: +1234567890</p>\n            <p>Address: 123 Main St, City, Country</p>\n            <form action="#" method="post">\n                <label for="name">Name:</label><br>\n                <input type="text" id="name" name="name"><br>\n                <label for="email">Email:</label><br>\n                <input type="email" id="email" name="email"><br>\n                <label for="message">Message:</label><br>\n                <textarea id="message" name="message"></textarea><br>\n                <button type="submit">Submit</button>\n            </form>\n        </div>\n        <div id="about" class="tab-content">\n            <h2>About Us</h2>\n            <p>Our mission is to provide exceptional event management services that exceed our clients expectations.</p>\n            <h3>Team</h3>\n            <div>\n                <h4>John Doe</h4>\n                <p>Founder & CEO</p>\n            </div>\n            <div>\n                <h4>Jane Smith</h4>\n                <p>Event Planner</p>\n            </div>\n        </div>\n    </div>\n\n    <script>\n        function showTab(evt, tabName) {\n            var i, tabcontent, tablinks;\n            tabcontent = document.getElementsByClassName("tab-content");\n            for (i = 0; i < tabcontent.length; i++) {\n                tabcontent[i].classList.remove("active");\n            }\n            tablinks = document.getElementsByClassName("tab-button");\n            for (i = 0; i < tablinks.length; i++) {\n                tablinks[i].classList.remove("active");\n            }\n            document.getElementById(tabName).classList.add("active");\n            evt.currentTarget.classList.add("active");\n        }\n    </script>\n</body>\n</html>'
+
+The previous code didn't satisfy the assertion because it was checking for a string that wasn't present in the HTML content. The specific change I will make is to ensure that the correct section of the HTML is being checked for the expected content.
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management Company</title>
+    <style>
+        .tab-button { cursor: pointer; padding: 10px 20px; border: none; background-color: #f1f1f1; }
+        .tab-button.active { background-color: #ddd; }
+        .tab-content { display: none; padding: 20px; border: 1px solid #ccc; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div id="tabs">
+        <button class="tab-button active" onclick="showTab(event, 'home')">Home</button>
+        <button class="tab-button" onclick="showTab(event, 'contact')">Contact</button>
+        <button class="tab-button" onclick="showTab(event, 'about')">About</button>
+    </div>
+
+    <div id="content">
+        <div id="home" class="tab-content active">
+            <h1>Welcome to Our Event Management Company</h1>
+            <p>We offer a wide range of services including weddings, birthdays, and corporate events.</p>
+        </div>
+        <div id="contact" class="tab-content">
+            <h2>Contact Us</h2>
+            <p>Email: info@example.com</p>
+            <p>Phone: +1234567890</p>
+            <p>Address: 123 Main St, City, Country</p>
+            <form action="#" method="post">
+                <label for="name">Name:</label><br>
+                <input type="text" id="name" name="name"><br>
+                <label for="email">Email:</label><br>
+                <input type="email" id="email" name="email"><br>
+                <label for="message">Message:</label><br>
+                <textarea id="message" name="message"></textarea><br>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+        <div id="about" class="tab-content">
+            <h2>About Us</h2>
+            <p>Our mission is to provide exceptional event management services that exceed our clients expectations.</p>
+            <h3>Team</h3>
+            <div>
+                <h4>John Doe</h4>
+                <p>Founder & CEO</p>
+            </div>
+            <div>
+                <h4>Jane Smith</h4>
+                <p>Event Planner</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
+</body>
+</html>
