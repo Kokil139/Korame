@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management Company</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #000000;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #00008B;
+            color: white;
+            text-align: center;
+            padding: 1em 0;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+        }
+        .event {
+            background-color: white;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+            padding: 15px;
+        }
+        .contact-form {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            text-align: center;
+        }
+        input[type="text"], input[type="email"], textarea {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #00008B;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Event Management Company</h1>
+    </div>
+    <div class="container">
+        <div class="event">
+            <h2>Event Title 1</h2>
+            <p>Date: January 1, 2024</p>
+            <p>Description: This is the description for Event Title 1.</p>
+        </div>
+        <div class="event">
+            <h2>Event Title 2</h2>
+            <p>Date: February 15, 2024</p>
+            <p>Description: This is the description for Event Title 2.</p>
+        </div>
+        <div class="event">
+            <h2>Event Title 3</h2>
+            <p>Date: March 20, 2024</p>
+            <p>Description: This is the description for Event Title 3.</p>
+        </div>
+    </div>
+    <div class="container contact-form">
+        <h2>Contact Us</h2>
+        <form action="#" method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" rows="4" required></textarea>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</body>
+</html>

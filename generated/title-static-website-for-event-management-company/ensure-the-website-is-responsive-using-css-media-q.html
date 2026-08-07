@@ -1,0 +1,82 @@
+<!-- 
+Assertion failed: Email field not found.
+The previous code did not include any form fields on the contact page, so the test could not find the 'email' field.
+Specific change: Add a form with fields for name, email, and message to the contact page.
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management Company</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #000000;
+            background-color: #ffffff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #00008B;
+        }
+        p {
+            color: #696969;
+        }
+        .event {
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label, input, textarea {
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #00008B;
+            color: #ffffff;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Event Management Company</h1>
+        <h2>Home</h2>
+        <div class="event">
+            <h3>Event 1</h3>
+            <p>Date: January 1, 2024</p>
+            <p>Description: This is the first event.</p>
+        </div>
+        <div class="event">
+            <h3>Event 2</h3>
+            <p>Date: February 1, 2024</p>
+            <p>Description: This is the second event.</p>
+        </div>
+        <div class="event">
+            <h3>Event 3</h3>
+            <p>Date: March 1, 2024</p>
+            <p>Description: This is the third event.</p>
+        </div>
+        <h2>Contact</h2>
+        <form action="#" method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" required></textarea>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</body>
+</html>

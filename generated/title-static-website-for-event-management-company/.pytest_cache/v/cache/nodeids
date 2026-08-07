@@ -1,0 +1,18 @@
+[
+  "test_apply-a-consistent-navy-blue-00008b-and-black-0000.py::test_contact_page_content",
+  "test_apply-a-consistent-navy-blue-00008b-and-black-0000.py::test_home_page_content",
+  "test_apply-a-consistent-navy-blue-00008b-and-black-0000.py::test_html_file_exists",
+  "test_create-the-html-structure-for-the-home-page-and-co.py::test_contact_page_elements",
+  "test_create-the-html-structure-for-the-home-page-and-co.py::test_home_page_elements",
+  "test_create-the-html-structure-for-the-home-page-and-co.py::test_html_file_exists",
+  "test_ensure-the-website-is-responsive-using-css-media-q.py::test_contact_page_content",
+  "test_ensure-the-website-is-responsive-using-css-media-q.py::test_contact_page_form_fields",
+  "test_ensure-the-website-is-responsive-using-css-media-q.py::test_home_page_content",
+  "test_ensure-the-website-is-responsive-using-css-media-q.py::test_html_file_exists",
+  "test_style-the-contact-page-using-css-to-include-a-form.py::test_contact_page_elements",
+  "test_style-the-home-page-using-css-to-include-event-lis.py::test_color_scheme",
+  "test_style-the-home-page-using-css-to-include-event-lis.py::test_event_listings_present",
+  "test_style-the-home-page-using-css-to-include-event-lis.py::test_file_exists",
+  "test_style-the-home-page-using-css-to-include-event-lis.py::test_home_page_content",
+  "test_style-the-home-page-using-css-to-include-event-lis.py::test_html_file_exists"
+]
