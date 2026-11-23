@@ -6,6 +6,7 @@ import RTEPage from "../pages/RTEPage";
 import RequirementsPage from "../pages/RequirementsPage";
 import WorkflowPage from "../pages/WorkflowPage";
 import StoryRunPage from "../pages/StoryRunPage";
+import KnowledgeAssistant from "../components/knowledge/KnowledgeAssistant.tsx";
 
 /**
  * Rendered inside <BrowserRouter> so it can read the current location. Keying
@@ -29,6 +30,7 @@ const AppShell: FC = () => {
           <Route path="/" element={<HomePage />} />
         </Routes>
       </main>
+      <KnowledgeAssistant />
     </>
   );
 };

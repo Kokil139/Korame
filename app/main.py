@@ -6,6 +6,7 @@ AI-native software factory with multi-agent orchestration.
 
 import sys
 import asyncio
+from pathlib import Path
 
 if sys.platform == "win32":
     # The Testing agent's sandbox runs pytest via asyncio.create_subprocess_exec().
@@ -24,8 +25,9 @@ from app.utils import logger, setup_logging
 from app.kernel import Registry
 from app.providers import OllamaProvider
 from app.router import ModelRouter
-from app.agents import RTEAgent, DeveloperAgent, TestingAgent
+from app.agents import RTEAgent, DeveloperAgent, TestingAgent, KnowledgeAgent
 from app.workflow import WorkflowEngine
+from app.knowledge.memory import ConversationMemory
 from app.knowledge import KnowledgeFabric
 from app.integrations import GitHubService
 from app.api import (
@@ -36,6 +38,9 @@ from app.api import (
     set_development_engine,
     set_development_memory,
     set_development_story_run_store,
+    knowledge_router,
+    set_knowledge_engine,
+    set_knowledge_memory,
 )
 
 
@@ -69,6 +74,8 @@ def create_app() -> FastAPI:
         ollama_embed_model=settings.ollama_embed_model,
     )
     conversation_memory = knowledge_fabric.conversation_memory
+    #Chatbot memory must not show up in requirement conversations
+    knowledge_conversation_memory = ConversationMemory()
     logger.info("Initialized Knowledge Fabric")
 
     # Register providers
@@ -81,6 +88,9 @@ def create_app() -> FastAPI:
     registry.register_provider(coder_provider)
     model_router.set_default_provider(coder_provider)
 
+    project_root = Path(__file__).resolve().parent.parent
+    indexed_chunks = knowledge_fabric.index_documents_from_directory(str(project_root))
+    logger.info(f"Indexed {indexed_chunks} document chunks into the knowledge fabric")
     # RTE agent gets its own model (reasoning/thinking-capable) — can be the
     # same as OLLAMA_MODEL or a different one (e.g. qwen3:8b).
     if settings.ollama_rte_model != settings.ollama_model:
@@ -96,6 +106,17 @@ def create_app() -> FastAPI:
         f"Model routing: rte={settings.ollama_rte_model}, "
         f"developer/testing={settings.ollama_model}"
     )
+
+    if settings.ollama_knowledge_model == settings.ollama_rte_model:
+        knowledge_provider = rte_provider
+    else:
+        knowledge_provider = OllamaProvider(
+            base_url=settings.ollama_url,
+            model=settings.ollama_knowledge_model,
+        )
+        registry.register_provider_as(knowledge_provider, "ollama-knowledge")
+    model_router.register_agent_provider("knowledge", knowledge_provider)
+    logger.info(f"Model routing: knowledge={settings.ollama_knowledge_model}")
 
     # Register agents
     rte_agent = RTEAgent(model_router=model_router, knowledge_fabric=knowledge_fabric)
@@ -125,12 +146,18 @@ def create_app() -> FastAPI:
     registry.register_agent(testing_agent)
     logger.info("Registered Testing agent")
 
+    knowledge_agent = KnowledgeAgent(model_router=model_router, knowledge_fabric=knowledge_fabric)
+    registry.register_agent(knowledge_agent)
+    logger.info("Registered Knowledge agent")
+
     # Set up API dependencies
     set_engine(workflow_engine)
     set_memory(conversation_memory)
     set_development_engine(workflow_engine)
     set_development_memory(conversation_memory)
     set_development_story_run_store(knowledge_fabric.story_run_store)
+    set_knowledge_engine(workflow_engine)
+    set_knowledge_memory(knowledge_conversation_memory)
     logger.info("Initialized workflow engine and conversation memory")
 
     # Create FastAPI app
@@ -152,6 +179,7 @@ def create_app() -> FastAPI:
     # Include API routes
     app.include_router(router)
     app.include_router(development_router)
+    app.include_router(knowledge_router)
 
     logger.info(f"Korame V1 ready on {settings.api_host}:{settings.api_port}")
 
