@@ -37,7 +37,7 @@ ollama serve
 ollama pull qwen2.5-coder:7b     # generative model for all agents
 ollama pull nomic-embed-text     # embedding model for semantic search
 ```
-
+q
 ## Step 3: Start Korame (1 minute)
 
 ```bash
