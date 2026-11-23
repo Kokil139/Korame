@@ -3,7 +3,7 @@ Knowledge Fabric Service for Korame.
 
 Central service that orchestrates memory, graph, vector store, and search.
 """
-
+import os
 from typing import Optional, Any, List, Dict
 from app.knowledge.memory import (
     ConversationMemory,
@@ -219,6 +219,99 @@ class KnowledgeFabric:
         """Index a document for search (both full-text and semantic)."""
         self.full_text_search.index_document(doc_id, title, description, content, metadata)
         self.semantic_search.index_document(doc_id, title, description, content, metadata)
+
+    def index_documents_from_directory(
+        self,
+        root_dir: str,
+        extensions: tuple[str, ...] = (".md", ".txt"),
+        max_chunk_lines: int = 120,
+        max_chunk_chars: int = 1800,
+    ) -> int:
+        """
+        Recursively index text documents (e.g. project documentation) under a
+        directory, so the Knowledge Agent can search and quote them exactly.
+
+        Splits each file into line-tracked, non-overlapping chunks (v1 keeps
+        this simple) so a search result can cite a precise source file + line
+        range instead of "the whole file is relevant". The chunk's raw text
+        is stashed in `metadata["content"]` since the search layer itself
+        only returns title/description/metadata, not the original body.
+
+        Args:
+            root_dir: Directory to scan recursively.
+            extensions: File extensions to index (case-insensitive).
+            max_chunk_lines: Soft cap on lines per chunk.
+            max_chunk_chars: Soft cap on characters per chunk (whichever
+                limit is hit first ends the chunk).
+
+        Returns:
+            Number of chunks indexed.
+        """
+        excluded_dirs = {
+            ".git", "__pycache__", "node_modules", "venv", ".venv",
+            "dist", "build", "korame.egg-info", ".pytest_cache", ".mypy_cache",
+        }
+        indexed = 0
+
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            dirnames[:] = [d for d in dirnames if d not in excluded_dirs and not d.startswith(".")]
+
+            for filename in filenames:
+                if not filename.lower().endswith(extensions):
+                    continue
+
+                file_path = os.path.join(dirpath, filename)
+                rel_path = os.path.relpath(file_path, root_dir).replace(os.sep, "/")
+
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        lines = f.readlines()
+                except OSError:
+                    continue
+
+                chunks = self._chunk_lines(lines, max_chunk_lines, max_chunk_chars)
+                for chunk_idx, (start_line, end_line, text) in enumerate(chunks):
+                    if not text.strip():
+                        continue
+                    self.index_for_search(
+                        doc_id=f"doc::{rel_path}::chunk{chunk_idx}",
+                        title=f"[{rel_path}] (lines {start_line}-{end_line})",
+                        description=rel_path,
+                        content=text,
+                        metadata={
+                            "content": text,
+                            "source": rel_path,
+                            "start_line": start_line,
+                            "end_line": end_line,
+                        },
+                    )
+                    indexed += 1
+
+        return indexed
+
+    @staticmethod
+    def _chunk_lines(
+        lines: List[str], max_chunk_lines: int, max_chunk_chars: int
+    ) -> List[tuple[int, int, str]]:
+        """Split a file's lines into (start_line, end_line, text) chunks, no overlap."""
+        chunks: List[tuple[int, int, str]] = []
+        buffer: List[str] = []
+        start_line = 1
+        char_count = 0
+
+        for line_no, line in enumerate(lines, start=1):
+            buffer.append(line)
+            char_count += len(line)
+            if len(buffer) >= max_chunk_lines or char_count >= max_chunk_chars:
+                chunks.append((start_line, line_no, "".join(buffer).strip()))
+                buffer = []
+                start_line = line_no + 1
+                char_count = 0
+
+        if buffer:
+            chunks.append((start_line, len(lines), "".join(buffer).strip()))
+
+        return chunks
 
     def search(
         self,

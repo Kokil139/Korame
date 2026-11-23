@@ -21,6 +21,12 @@ env/
 # Editor directories
 .vscode/
 
+# Vite cache
+.vite/
+
+# Dependencies
+node_modules/
+
 # Logs
 *.log
 

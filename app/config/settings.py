@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # story splitting — benefits from reasoning/thinking capability).
     # Set to the same value as OLLAMA_MODEL to use a single model for everything.
     ollama_rte_model: str = Field(default="qwen3:8b", alias="OLLAMA_RTE_MODEL")
+    # Model used by the Knowledge agent (semantic search, context retrieval).
+    # reasoning/thinking capability as RTE model. Defaults to the same model.
+    ollama_knowledge_model: str = Field(default="qwen3:8b", alias="OLLAMA_KNOWLEDGE_MODEL")
     # Dedicated embedding model for the knowledge fabric's semantic search.
     # Must be an embedding-capable model, NOT the generative coder model.
     # Pull once with: ollama pull nomic-embed-text
