@@ -14,7 +14,7 @@ def settings():
     """Get test settings."""
     return Settings(
         ollama_url="http://localhost:11434",
-        ollama_model="qwen2:7b",
+        ollama_model="qwen2.5-coder:7b",
         log_level="DEBUG"
     )
 

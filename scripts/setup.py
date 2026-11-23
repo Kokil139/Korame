@@ -94,7 +94,7 @@ def install_dependencies():
     print("\n✅ Setup complete!")
     print("\nNext steps:")
     print("1. Start Ollama: ollama serve")
-    print("2. Pull a model: ollama pull qwen2:7b")
+    print("2. Pull models: ollama pull qwen2.5-coder:7b && ollama pull nomic-embed-text")
     print("3. Run tests: pytest tests/ -v")
     print("4. Start server: uvicorn app.main:app --reload")
 

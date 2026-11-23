@@ -19,7 +19,8 @@ pip install -e ".[dev]"
 ```bash
 ollama serve
 # In another terminal:
-ollama pull qwen2:7b
+ollama pull qwen2.5-coder:7b   # generative model
+ollama pull nomic-embed-text   # embedding model
 ```
 
 ### 3. Run Tests
@@ -61,8 +62,9 @@ uvicorn app.main:app --reload
 
 1. **Implement new agents**
    - Architect Agent
-   - Developer Agent
    - Reviewer Agent
+   - (Developer and Testing Agents are already implemented — see
+     `app/agents/developer/` and `app/agents/testing/` for the pattern)
 
 2. **Add providers**
    - OpenAI provider

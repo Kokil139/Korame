@@ -22,12 +22,12 @@ Korame V1 is built on a **kernel-first** architecture. Every component depends o
 │  Agents    │                │
 │  Providers │       ┌────────▼────────┐
 └────────────┘       │     Provider    │
-                     │   (LiteLLM)     │
+                     │  (OllamaProvider)│
                      └────────┬────────┘
                               │
                      ┌────────▼────────┐
-                     │  Ollama/OpenAI/ │
-                     │  Claude/etc     │
+                     │  Ollama HTTP    │
+                     │  qwen2.5-coder  │
                      └─────────────────┘
 ```
 
@@ -95,7 +95,8 @@ Each agent inherits from the kernel interface.
 #### agents/rte/agent.py
 - **RTEAgent**: Requirements & Test Engineer
 - Takes business requirements
-- Generates user stories with acceptance criteria
+- Generates user stories with acceptance criteria, or asks clarifying questions
+- Decides whether a requirement needs one story or multiple independent stories
 - Uses model router to select provider
 - Loads prompts from file
 
@@ -106,28 +107,40 @@ RTE Agent
 ↓
 Model Router (selects provider)
 ↓
-LiteLLM → Ollama → Qwen2 7B
+Ollama → qwen2.5-coder:7b
 ↓
 Output: "As a user, I want to upload CSV files..."
 ```
 
+#### agents/developer/agent.py
+- **DeveloperAgent**: breaks a finalized story into tasks (or keeps it as one,
+  when in doubt), implements/revises each task's code, opens a real GitHub PR
+  once every task passes
+- Detects Python vs. HTML output; derives a per-task filename so multiple
+  tasks can coexist in the same shared workspace
+- Orchestrated by `WorkflowEngine.execute_development_cycle()` /
+  `execute_multi_story_cycle()` — not called directly by other agents
+
+#### agents/testing/agent.py + sandbox.py
+- **TestingAgent**: generates real pytest tests (import-based for Python,
+  text-assertion based for HTML) and actually executes them
+- **Sandbox**: isolated, per-story workspace under the OS temp directory;
+  runs pytest via a worker thread (`asyncio.to_thread` + `subprocess.run`)
+  rather than `asyncio.create_subprocess_exec()`, sidestepping a Windows
+  event-loop subprocess limitation
+
 ### 3. Providers (app/providers/)
 
-Model provider implementations using LiteLLM abstraction.
+Model provider implementations.
 
 #### providers/ollama.py
-- **OllamaProvider**: Local Ollama models
-- Uses LiteLLM for unified interface
+- **OllamaProvider**: Calls the local Ollama HTTP API directly (no LiteLLM)
+- Handles `think: false` for format-sensitive agents (Developer, Testing)
+- Configurable timeout, retries, and generation options
 
 #### providers/litellm.py
-- **LiteLLMProvider**: Multi-provider support
-- Works with any LiteLLM-supported model
-- Tomorrow: OpenAI, Claude, etc.
-
-**Why LiteLLM?**
-- Single interface for 100+ models
-- Swap providers without code changes
-- Built-in error handling, retries, caching
+- Deprecated stub — raises `ImportError` if imported
+- Kept as a placeholder; use `OllamaProvider` for all local inference
 
 ### 4. Router (app/router/)
 
@@ -159,23 +172,18 @@ Orchestrates task execution.
 
 #### workflow/engine.py
 - **WorkflowEngine**: Main orchestrator
-- Takes agent name, routes through registry
-- Manages task execution lifecycle
-- Supports agent chaining (future)
+- `execute()` — single agent execution
+- `execute_development_cycle()` — the Developer↔Testing loop for one story;
+  delegates the per-item implement/test/retry cycle to a LangGraph StateGraph
+- `execute_multi_story_cycle()` — sequences multiple stories in order
 
-```python
-# Execute single agent
-response = await engine.execute(
-    agent_name="rte",
-    input_data={"requirement": "..."}
-)
-
-# Execute agent chain (future)
-responses = await engine.execute_chain(
-    agent_sequence=["rte", "architect", "developer"],
-    initial_input={"requirement": "..."}
-)
-```
+#### workflow/graph_engine.py *(LangGraph)*
+- **`build_dev_test_graph()`** — builds a compiled `StateGraph` for the
+  implement → test → fix cycle
+- Nodes: `implement`, `test`, `advance`, `exhausted`
+- Conditional routing: pass → next item; fail+retryable → implement;
+  fail+exhausted → stop
+- `DevTestState` TypedDict carries `item_index`, `attempt`, `test_feedback`, `stop`
 
 ### 6. Memory (app/memory/)
 
@@ -228,7 +236,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
 ```env
 OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2:7b
+OLLAMA_MODEL=qwen2.5-coder:7b
+OLLAMA_EMBED_MODEL=nomic-embed-text
 LOG_LEVEL=INFO
 ```
 
@@ -348,7 +357,7 @@ from app.kernel.provider import Provider
 
 class AnthropicProvider(Provider):
     async def call(self, prompt: str, **kwargs) -> str:
-        # LiteLLM call to Claude
+        # Call to another provider
         pass
 
 # 2. Register in main.py
@@ -388,7 +397,8 @@ async def new_endpoint(request: RequestModel) -> ResponseModel:
 
 ### 3. Provider Abstraction
 - ❌ Code directly against Ollama
-- ✅ Use Provider interface + LiteLLM
+- ✅ Use Provider interface
+- Implement `call(prompt, **kwargs) -> str`
 - Swappable providers without code changes
 
 ### 4. Configuration Over Code

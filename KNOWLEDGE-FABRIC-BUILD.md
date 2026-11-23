@@ -22,7 +22,7 @@ A comprehensive **Knowledge Fabric** system for Korame - the central intelligenc
 | **Memory Types** | 4 |
 | **Search Types** | 3 |
 | **Graph Backends** | 2 |
-| **Embedding Providers** | 3 |
+| **Embedding Providers** | 4 |
 
 ---
 
@@ -62,9 +62,42 @@ app/knowledge/                        # Knowledge Fabric
 │   ├── __init__.py
 │   └── artifacts.py                  # Versioning & relationships (350 lines)
 │
-└── models/                           # Reserved for future data models
+├── todos/                              # Dev/Test workflow tracking (added for Phase 1's
+│   ├── __init__.py                     # Developer/Testing agent pipeline)
+│   └── todo_store.py                   # TodoStatus, TodoItem, TodoList, TodoStore,
+│                                        # StoryRun, StoryRunStore
+│
+└── models/                             # Reserved for future data models
     └── __init__.py
 ```
+
+---
+
+## ✅ Todo/Story-Run Tracking (added post-launch, for the Developer/Testing pipeline)
+
+**File**: `app/knowledge/todos/todo_store.py`
+
+Tracks the live state of the Developer↔Testing loop so a REST endpoint can be
+polled for progress instead of blocking until the whole thing finishes.
+
+```python
+from app.knowledge.todos import TodoStatus, TodoItem, TodoList, TodoStore, StoryRun, StoryRunStore
+
+todo_store = TodoStore()
+todo_list = TodoList(id="...", story_id="...", story_title="...")
+todo_store.create(todo_list)
+
+# Live status fields polled by the frontend:
+todo_list.status            # starting | planning | running | complete | failed | error
+todo_list.current_agent     # "rte" | "developer" | "testing" | None
+todo_list.current_activity  # human-readable, e.g. "Testing: Add the contact form"
+todo_list.pull_request       # {"created": True, "pr_url": ...} once opened
+```
+
+**Features**:
+- ✅ Per-task status (pending/in_progress/testing/failed/complete), attempts, generated code, test code/output, detected file type, derived filename
+- ✅ Live run-level status/current-agent/current-activity for polling
+- ✅ `StoryRun`/`StoryRunStore` sequence multiple `TodoList`s for a multi-story requirement, one story at a time
 
 ---
 
@@ -184,34 +217,50 @@ related = graph.get_related_nodes("user-1", max_depth=2)
 
 ## 🔍 Vector Storage (Embeddings)
 
-**File**: `app/knowledge/vector/vector_store.py` (250 lines)
+**File**: `app/knowledge/vector/vector_store.py`
 
+Two implementations with the same interface:
+
+**`LlamaIndexVectorStore`** *(default when `llama-index-core` is installed)*
 ```python
-vector_store = InMemoryVectorStore(vector_dimension=768)
+from app.knowledge.vector import LlamaIndexVectorStore
+vector_store = LlamaIndexVectorStore(vector_dimension=768)
 vector_store.add("doc-1", embedding_vector, text="content")
 results = vector_store.search(query_vector, k=10, threshold=0.5)
 ```
 
-**Features**:
-- ✅ Cosine similarity search
-- ✅ Euclidean distance metrics
-- ✅ Metadata per vector
-- ✅ Batch operations
-- ✅ Memory statistics
+**`InMemoryVectorStore`** *(fallback — pure-Python cosine similarity)*
+```python
+from app.knowledge.vector import InMemoryVectorStore
+vector_store = InMemoryVectorStore(vector_dimension=768)
+# Same add/search/delete interface
+```
 
-**Future Integrations**:
-- Qdrant
-- Pinecone
-- Weaviate
-- Milvus
+`KnowledgeFabric` selects automatically: `LlamaIndexVectorStore` when
+`llama-index-core` is importable, `InMemoryVectorStore` otherwise.
+
+**Features**:
+- ✅ Cosine similarity search (both backends)
+- ✅ Metadata per vector
+- ✅ Drop-in interface compatibility
+- ✅ LlamaIndex `SimpleVectorStore` backend (production-grade ANN)
 
 ---
 
-## 🎯 Embedding Providers (3 Built-In)
+## 🎯 Embedding Providers (4 Built-In)
 
-**File**: `app/knowledge/embeddings/embeddings.py` (300 lines)
+**File**: `app/knowledge/embeddings/embeddings.py`
 
-### 1. Sentence Transformers (Recommended for V1)
+### 1. OllamaEmbedding *(Default when llama-index-embeddings-ollama is installed)*
+Local, no API key, backed by `nomic-embed-text` on the local Ollama server.
+
+```python
+# Requires: ollama pull nomic-embed-text
+embedder = OllamaEmbedding(model="nomic-embed-text")   # 768 dims
+embedding = embedder.embed_text("Hello world")
+```
+
+### 2. Sentence Transformers
 Local, fast, free.
 
 ```python
@@ -219,7 +268,7 @@ embedder = SentenceTransformersEmbedding("all-MiniLM-L6-v2")
 embedding = embedder.embed_text("Hello world")
 ```
 
-### 2. OpenAI
+### 3. OpenAI
 High quality, API-based.
 
 ```python
@@ -227,8 +276,8 @@ embedder = OpenAIEmbedding(api_key="sk-...", model="text-embedding-3-small")
 embedding = embedder.embed_text("Hello world")
 ```
 
-### 3. Dummy (Testing)
-Random vectors for testing.
+### 4. Dummy (Testing)
+Random vectors for testing / fallback when no packages are installed.
 
 ```python
 embedder = DummyEmbedding(dimension=768)

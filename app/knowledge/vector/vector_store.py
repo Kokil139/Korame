@@ -159,6 +159,88 @@ class InMemoryVectorStore:
         # Return cosine similarity
         return dot_product / (mag1 * mag2)
 
+
+class LlamaIndexVectorStore:
+    """
+    Vector storage backed by LlamaIndex's ``SimpleVectorStore``.
+
+    Exposes the same ``add`` / ``search`` / ``delete`` / ``clear`` interface as
+    ``InMemoryVectorStore`` so it can be used as a drop-in replacement anywhere
+    that class appears.
+
+    Requires: pip install llama-index-core
+    """
+
+    def __init__(self, vector_dimension: int = 768):
+        from llama_index.core.vector_stores import SimpleVectorStore
+        self.vector_dimension = vector_dimension
+        self._store = SimpleVectorStore()
+        self._count: int = 0
+
+    def add(
+        self,
+        entry_id: str,
+        vector: List[float],
+        text: Optional[str] = None,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> bool:
+        if len(vector) != self.vector_dimension:
+            return False
+        from llama_index.core.schema import TextNode
+        node = TextNode(
+            id_=entry_id,
+            text=text or "",
+            metadata=metadata or {},
+            embedding=list(vector),
+        )
+        self._store.add([node])
+        self._count += 1
+        return True
+
+    def search(
+        self,
+        query_vector: List[float],
+        k: int = 10,
+        threshold: float = 0.5,
+    ) -> List[Tuple[str, float]]:
+        if len(query_vector) != self.vector_dimension:
+            return []
+        from llama_index.core.vector_stores import VectorStoreQuery
+        query = VectorStoreQuery(query_embedding=list(query_vector), similarity_top_k=k)
+        result = self._store.query(query)
+        out: List[Tuple[str, float]] = []
+        for node_id, score in zip(result.ids or [], result.similarities or []):
+            if float(score) >= threshold:
+                out.append((node_id, float(score)))
+        return out
+
+    def get(self, entry_id: str) -> Optional[VectorEntry]:
+        """Not directly supported by SimpleVectorStore — always returns None."""
+        return None
+
+    def delete(self, entry_id: str) -> bool:
+        self._store.delete(entry_id)
+        self._count = max(0, self._count - 1)
+        return True
+
+    def clear(self) -> int:
+        from llama_index.core.vector_stores import SimpleVectorStore
+        count = self._count
+        self._store = SimpleVectorStore()
+        self._count = 0
+        return count
+
+    def size(self) -> int:
+        return self._count
+
+    def get_stats(self) -> dict[str, Any]:
+        return {
+            "total_vectors": self._count,
+            "vector_dimension": self.vector_dimension,
+            "backend": "llama_index.SimpleVectorStore",
+        }
+
+
     @staticmethod
     def _euclidean_distance(vec1: List[float], vec2: List[float]) -> float:
         """Calculate Euclidean distance between two vectors."""

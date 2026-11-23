@@ -150,6 +150,52 @@ class OpenAIEmbedding(EmbeddingProvider):
         return self.dimension
 
 
+class OllamaEmbedding(EmbeddingProvider):
+    """
+    Embedding provider backed by a local Ollama embedding model via LlamaIndex.
+
+    Uses LlamaIndex's ``OllamaEmbedding`` under the hood so the Ollama server
+    handles the heavy lifting locally — no cloud API key needed.
+
+    IMPORTANT: ``ollama_model`` must be a **dedicated embedding model**, NOT the
+    generative coder model.  Recommended: ``nomic-embed-text`` (768 dims).
+    Pull it once with: ``ollama pull nomic-embed-text``
+
+    Requires: pip install llama-index-embeddings-ollama
+    """
+
+    def __init__(
+        self,
+        model: str = "nomic-embed-text",
+        base_url: str = "http://localhost:11434",
+    ):
+        self.model = model
+        self.base_url = base_url
+        self._embedder = None
+        self._dimension: Optional[int] = None
+
+    def _get_embedder(self):
+        if self._embedder is None:
+            from llama_index.embeddings.ollama import OllamaEmbedding as _OllamaEmbedding
+            self._embedder = _OllamaEmbedding(
+                model_name=self.model,
+                base_url=self.base_url,
+            )
+        return self._embedder
+
+    def embed_text(self, text: str) -> List[float]:
+        return list(self._get_embedder().get_text_embedding(text))
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        return [list(v) for v in self._get_embedder().get_text_embedding_batch(texts)]
+
+    def get_dimension(self) -> int:
+        if self._dimension is None:
+            sample = self.embed_text("dimension probe")
+            self._dimension = len(sample)
+        return self._dimension
+
+
 class DummyEmbedding(EmbeddingProvider):
     """
     Dummy embedding provider for testing.
@@ -195,9 +241,11 @@ EMBEDDING_MODELS = """
 - Requires API key
 - Models: text-embedding-3-small, text-embedding-3-large
 
-## Ollama
-- Local, open source
-- Integration coming
+## Ollama (implemented — requires llama-index-embeddings-ollama)
+- Local, open source, no API key needed
+- Requires a dedicated embedding model (NOT the generative model)
+- ``ollama pull nomic-embed-text`` then use OllamaEmbedding(model="nomic-embed-text")
+- Dimension: 768 (nomic-embed-text)
 
 ## Cohere
 - High quality

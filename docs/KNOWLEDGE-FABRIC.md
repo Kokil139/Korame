@@ -17,17 +17,23 @@ Knowledge Fabric
     │   ├─ Session Memory (session-level context)
     │   └─ Working Memory (temporary computation)
     │
+    ├─ Todo/Story-Run Tracking (Developer/Testing agent pipeline)
+    │   ├─ TodoStore (per-story task lists, live status)
+    │   └─ StoryRunStore (sequences multiple stories automatically)
+    │
     ├─ Knowledge Graph
     │   ├─ NetworkX (in-memory, default)
     │   └─ Neo4j (production)
     │
     ├─ Vector Store
-    │   └─ In-memory (V1)
-    │   └─ Qdrant/Pinecone/Weaviate (future)
+    │   ├─ LlamaIndexVectorStore (default — requires llama-index-core)
+    │   └─ InMemoryVectorStore (fallback)
     │
     ├─ Embeddings
+    │   ├─ OllamaEmbedding (default — requires llama-index-embeddings-ollama + nomic-embed-text)
     │   ├─ Sentence Transformers (local)
     │   ├─ OpenAI (API)
+    │   ├─ DummyEmbedding (fallback when LlamaIndex not installed)
     │   └─ Custom providers
     │
     ├─ Search Systems
@@ -155,28 +161,25 @@ graph.add_edge("user-1", "story-1", "CREATED")
 Stores embeddings for similarity search.
 
 ```python
-from app.knowledge import InMemoryVectorStore, SentenceTransformersEmbedding
+from app.knowledge import LlamaIndexVectorStore, OllamaEmbedding
 
-# Create embeddings provider
-embedder = SentenceTransformersEmbedding("all-MiniLM-L6-v2")
+# LlamaIndex-backed (default when packages installed)
+embedder = OllamaEmbedding(model="nomic-embed-text")  # pull once: ollama pull nomic-embed-text
+vector_store = LlamaIndexVectorStore(vector_dimension=768)
 
-# Create vector store
-vector_store = InMemoryVectorStore(vector_dimension=384)
-
-# Add vectors
-text = "Users should be able to log in with email"
-embedding = embedder.embed_text(text)
-vector_store.add("story-1", embedding, text=text)
-
-# Search
-query_embedding = embedder.embed_text("authentication")
-results = vector_store.search(query_embedding, k=10, threshold=0.5)
+vector_store.add("story-1", embedder.embed_text("Login with email"), text="Login with email")
+results = vector_store.search(embedder.embed_text("authentication"), k=10, threshold=0.5)
 ```
 
+When `llama-index-core` / `llama-index-embeddings-ollama` are not installed the
+fabric automatically falls back to `InMemoryVectorStore` + `DummyEmbedding`.
+
 #### Embedding Providers
-- **Sentence Transformers** - Local, fast, free (recommended for V1)
-- **OpenAI** - High quality, requires API key
-- **Custom** - Implement `EmbeddingProvider` interface
+- **OllamaEmbedding** — Local, no API key, backed by `nomic-embed-text` via LlamaIndex *(default)*
+- **Sentence Transformers** — Local, fast, free
+- **OpenAI** — High quality, requires API key
+- **DummyEmbedding** — Random vectors, for testing only
+- **Custom** — Implement `EmbeddingProvider` interface
 
 ### 4. Search Systems
 

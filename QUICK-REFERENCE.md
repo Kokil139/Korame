@@ -1,5 +1,11 @@
 # KORAME - Quick Reference Guide
 
+> 📌 **This describes the long-term target architecture** (event bus,
+> Postgres/Neo4j/ChromaDB, 8 agents, Ollama↔Azure GPU routing). It has not
+> been built yet. For what's actually implemented and running today
+> ("Phase 1" — RTE/Developer/Testing agents, direct method calls, in-memory
+> storage, single local Ollama model), see [BUILD-SUMMARY.md](BUILD-SUMMARY.md).
+
 ## Key Principles (Remember These!)
 
 1. **Workflow Orchestrator is the execution engine** - Central control, all communication through events

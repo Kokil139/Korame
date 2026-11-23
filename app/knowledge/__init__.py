@@ -33,12 +33,14 @@ from app.knowledge.graph import (
 )
 from app.knowledge.vector import (
     InMemoryVectorStore,
+    LlamaIndexVectorStore,
     VectorEntry
 )
 from app.knowledge.embeddings import (
     EmbeddingProvider,
     SentenceTransformersEmbedding,
     OpenAIEmbedding,
+    OllamaEmbedding,
     DummyEmbedding
 )
 from app.knowledge.search import (
@@ -54,6 +56,12 @@ from app.knowledge.artifacts import (
     Artifact,
     ArtifactVersion,
     ArtifactStore
+)
+from app.knowledge.todos import (
+    TodoStatus,
+    TodoItem,
+    TodoList,
+    TodoStore
 )
 from app.knowledge.knowledge_service import KnowledgeFabric
 
@@ -93,6 +101,11 @@ __all__ = [
     "Artifact",
     "ArtifactVersion",
     "ArtifactStore",
+    # Todos
+    "TodoStatus",
+    "TodoItem",
+    "TodoList",
+    "TodoStore",
     # Service
     "KnowledgeFabric"
 ]

@@ -19,10 +19,24 @@ class Settings(BaseSettings):
 
     # Ollama Configuration
     ollama_url: str = Field(default="http://localhost:11434", alias="OLLAMA_URL")
-    ollama_model: str = Field(default="qwen3:8b", alias="OLLAMA_MODEL")
+    # Default model — used by Developer and Testing agents (code generation).
+    ollama_model: str = Field(default="qwen2.5-coder:7b", alias="OLLAMA_MODEL")
+    # Model used by the RTE agent (requirements analysis, clarification,
+    # story splitting — benefits from reasoning/thinking capability).
+    # Set to the same value as OLLAMA_MODEL to use a single model for everything.
+    ollama_rte_model: str = Field(default="qwen3:8b", alias="OLLAMA_RTE_MODEL")
+    # Dedicated embedding model for the knowledge fabric's semantic search.
+    # Must be an embedding-capable model, NOT the generative coder model.
+    # Pull once with: ollama pull nomic-embed-text
+    ollama_embed_model: str = Field(default="nomic-embed-text", alias="OLLAMA_EMBED_MODEL")
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+
+    # GitHub Integration (optional - PR creation is skipped gracefully if unset)
+    github_token: Optional[str] = Field(default=None, alias="GITHUB_TOKEN")
+    github_repo: Optional[str] = Field(default=None, alias="GITHUB_REPO")
+    github_base_branch: str = Field(default="main", alias="GITHUB_BASE_BRANCH")
 
     # LiteLLM
 #     litellm_log: str = Field(default="INFO", alias="LITELLM_LOG")
