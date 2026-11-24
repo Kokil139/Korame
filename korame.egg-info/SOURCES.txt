@@ -38,7 +38,6 @@ app/knowledge/vector/vector_store.py
 app/models/__init__.py
 app/prompts/__init__.py
 app/providers/__init__.py
-app/providers/litellm.py
 app/providers/ollama.py
 app/router/__init__.py
 app/router/model_router.py

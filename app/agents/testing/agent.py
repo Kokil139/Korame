@@ -32,7 +32,7 @@ class TestingAgent(BaseAgent):
 
     def _load_prompt(self) -> str:
         """Load the Testing agent prompt from file."""
-        prompt_path = os.path.join(os.path.dirname(__file__), "..", "prompts", "testing.md")
+        prompt_path = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", "testing.md")
         try:
             with open(prompt_path, "r") as f:
                 return f.read()

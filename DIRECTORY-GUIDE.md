@@ -371,15 +371,14 @@ Frontend (frontend/src/):
   hooks/               1 file     20 lines   (useChat.ts)
   components/chat/     4 files   170 lines   (ChatWindow, ChatMessage, ChatInput, TypingIndicator)
   components/common/   3 files    60 lines   (EmptyState, ErrorAlert, LoadingSpinner)
-  pages/               1 file     45 lines   (RTEPage.tsx built; Dashboard/Project/Settings empty)
+  pages/               5 file     (Home, RTE, Requirements, Workflow, StoryRun)
   routes/              1 file     35 lines   (AppRoutes.tsx)
   types/               1 file     35 lines   (chat.ts)
   theme/               1 file     25 lines   (theme.ts)
   utils/               1 file     10 lines   (constants.ts)
   App.tsx / main.tsx / index.css              (bootstrap + global styles)
   ────────────────────────────────────────
-  TOTAL:  ~17 built files (plus reserved empty placeholders for Dashboard/
-          Project/Settings pages, projectStore, layout/project components)
+  Project-management features are not implemented in V1 (dashboard, project page, settings)
 
 Docs:
   BUILD-SUMMARY.md     (this comprehensive guide)

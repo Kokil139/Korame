@@ -83,7 +83,7 @@ class RTEAgent(BaseAgent):
     def _load_prompt(self) -> str:
         """Load the RTE prompt from file."""
         prompt_path = os.path.join(
-            os.path.dirname(__file__), "..", "prompts", "rte.md"
+            os.path.dirname(__file__), "..", "..", "prompts", "rte.md"
         )
         try:
             with open(prompt_path, "r") as f:

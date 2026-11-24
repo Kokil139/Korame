@@ -41,7 +41,7 @@ class KnowledgeAgent(BaseAgent):
 
     def _load_prompt(self) -> str:
         """Load the Knowledge agent prompt from file."""
-        prompt_path = os.path.join(os.path.dirname(__file__), "..", "prompts", "knowledge.md")
+        prompt_path = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", "knowledge.md")
         try:
             with open(prompt_path, "r") as f:
                 return f.read()

@@ -32,7 +32,6 @@
 
 ## ✅ Providers
 - ✅ `app/providers/ollama.py` - OllamaProvider (direct Ollama HTTP API)
-- ✅ `app/providers/litellm.py` - Deprecated stub (raises ImportError)
 - ✅ `app/providers/__init__.py` - Provider exports
 
 ## ✅ Router
